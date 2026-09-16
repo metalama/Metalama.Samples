@@ -14,11 +14,11 @@ using System.IO.Compression;
 using MetalamaDependencies = PostSharp.Engineering.BuildTools.Dependencies.Definitions.MetalamaDependencies.V2027_0;
 
 // The .NET 11 SDK, which global.json names as the main SDK of the product and which the build agent installs. The
-// version is a literal instead of a member of the product family, because the .NET 11 SDK is still a preview and
+// version is a literal instead of a member of the product family, because the .NET 11 SDK is a prerelease and
 // PostSharp.Engineering names only released feature bands. Keep it equal to the constant of the same name in the
 // Metalama repository, and move both to MetalamaDependencies.Family.PreferredVersions.DotNetSdk once the .NET 11
 // SDK is released.
-const string dotNet11SdkVersion = "11.0.100-preview.7.26381.103";
+const string dotNet11SdkVersion = "11.0.100-rc.1.26425.128";
 
 // The .NET 10 SDK, which stays installed beside the .NET 11 one, because the build tool of this repository targets
 // net10.0 and the .NET 11 SDK carries no .NET 10 runtime. The version comes from the product family, so that it
