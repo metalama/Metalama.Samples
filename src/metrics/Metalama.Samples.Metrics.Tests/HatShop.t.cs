@@ -40,7 +40,7 @@ public class HatShop
       (_hatShopMetrics?.PlaceOrderExecutionTime).Add(Stopwatch.GetTimestamp() - timestamp);
     }
   }
-  private HatShopMetrics _hatShopMetrics;
+  private HatShopMetrics? _hatShopMetrics;
   public HatShop([AspectGenerated] HatShopMetrics? hatShopMetrics = null)
   {
     this._hatShopMetrics = hatShopMetrics;
