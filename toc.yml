@@ -130,6 +130,15 @@ items:
           topicUid: sample-comparison-3
         - name: Step 4. Customizing and optimizing
           topicUid: sample-comparison-4
+    - name: Intercepting calls
+      items:
+        - name: Tracing calls
+          topicUid: sample-call-tracing
+          items:
+            - name: Step 1. Tracing calls to a library
+              topicUid: sample-call-tracing-1
+            - name: Step 2. Enabling tracing only in a trace build
+              topicUid: sample-call-tracing-2
 
     - name: Shared Fabrics
       topicUid: sample-shared-fabric
