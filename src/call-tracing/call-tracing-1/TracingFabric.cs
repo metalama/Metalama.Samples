@@ -15,13 +15,9 @@ internal class TracingFabric : ProjectFabric
             calls => calls
                 .Type( typeof(InventoryClient) )
                 .AllMethods()
-                .RedirectToSynthesizedMethod( nameof(TracingTemplates.Trace) )
-                .WithTemplateProvider( TemplateProvider.FromInstance( new TracingTemplates() ) )
+                .RedirectToSynthesizedMethod( nameof(this.Trace) )
                 .WithGranularity( InterceptorGranularity.Member ) );
-}
 
-internal class TracingTemplates : ITemplateProvider
-{
     [Template]
     public dynamic? Trace()
     {
