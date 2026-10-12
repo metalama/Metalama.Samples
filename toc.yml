@@ -131,6 +131,18 @@ items:
         - name: Step 4. Customizing and optimizing
           topicUid: sample-comparison-4
 
+    - name: Intercepting calls
+      items:
+        - name: Replacing an implementation
+          topicUid: sample-legacy-replacement
+          items:
+            - name: Step 1. Finding which calls are actually used
+              topicUid: sample-legacy-replacement-1
+            - name: Step 2. Comparing the new implementation with the old one
+              topicUid: sample-legacy-replacement-2
+            - name: Step 3. Switching one module at a time
+              topicUid: sample-legacy-replacement-3
+
     - name: Shared Fabrics
       topicUid: sample-shared-fabric
     - name: Contributing
