@@ -8,8 +8,8 @@
     <ItemGroup>
         <PackageReference Include="Metalama.Extensions.Architecture"/>
         <PackageReference Include="Microsoft.Extensions.DependencyInjection"/>
-        <PackageReference Include="xunit.assert"/>
-        <PackageReference Include="xunit.extensibility.core"/>
+        <PackageReference Include="xunit.v3.assert"/>
+        <PackageReference Include="xunit.v3.extensibility.core"/>
     </ItemGroup>
 
 </Project>
