@@ -50,13 +50,11 @@ internal class RetryFabric : ProjectFabric
         }
     }
 
-    // Template for async methods.
+    // Template for async methods. The cancellationToken parameter binds by name to the parameter of the
+    // intercepted method.
     [Template]
-    public async Task<dynamic?> RetryAsync()
+    public async Task<dynamic?> RetryAsync( CancellationToken cancellationToken = default )
     {
-        var cancellationTokenParameter = meta.Interception.Method.ArgumentParameters
-            .LastOrDefault( p => p.Type.Equals( typeof(CancellationToken) ) );
-
         for ( var i = 0;; i++ )
         {
             try
@@ -67,15 +65,7 @@ internal class RetryFabric : ProjectFabric
             {
                 var delay = this.Delay * Math.Pow( 2, i + 1 );
                 Console.WriteLine( e.Message + $" Waiting {delay} ms." );
-
-                if ( cancellationTokenParameter != null )
-                {
-                    await Task.Delay( (int) delay, cancellationTokenParameter.Value );
-                }
-                else
-                {
-                    await Task.Delay( (int) delay );
-                }
+                await Task.Delay( (int) delay, cancellationToken );
             }
         }
     }

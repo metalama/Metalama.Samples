@@ -61,10 +61,9 @@ following differences:
 
 * `meta.Proceed()` and `meta.ProceedAsync()` call the intercepted method of `ExchangeRateClient`, with the arguments
   of the call site.
-* `RetryAsync` finds the `CancellationToken` parameter in `meta.Interception.Method.ArgumentParameters`, which are
-  the parameters of the interceptor that receive the arguments of the call. It then passes this parameter to
-  `Task.Delay`. The `meta.Interception` extension property requires C# 14. With an earlier version of C#, use
-  `meta.GetExtension<IInterceptionInfo>()` instead.
+* `RetryAsync` declares a run-time parameter `cancellationToken`, and passes it to `Task.Delay`. Metalama binds the
+  run-time parameters of the template to the parameters of the interceptor by name, so `cancellationToken` receives
+  the `CancellationToken` argument of the call. For details, see <xref:interceptor-binding-rules>.
 * The maximum number of attempts and the delay are properties of the fabric, instead of properties of the aspect.
 
 Metalama generates the interceptor methods in an internal static class named `MetalamaInterceptors`, in the global
