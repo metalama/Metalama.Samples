@@ -1,29 +1,49 @@
 #if TEST_OPTIONS
 // @Include(../../call-telemetry/call-telemetry-3/TelemetryFabric.cs)
-// @Include(../../call-telemetry/call-telemetry-3/PaymentsTelemetry.cs)
 #endif
 
 using Metalama.Samples.CallTelemetry.Payments;
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
 
-namespace Metalama.Samples.CallTelemetry3.Tests.RecordSdkMetrics;
-
-public class CheckoutService
+namespace Metalama.Samples.CallTelemetry3
 {
-    private readonly PaymentClient _payments = new();
-
-    public async Task<string> CheckoutAsync( string cardNumber, decimal amount, CancellationToken cancellationToken = default )
+    // A copy of PaymentsTelemetry.cs. It is in the test file so that the output shows the generated interceptors.
+    internal static class PaymentsTelemetry
     {
-        var fee = this._payments.GetFee( amount );
-        var authorizationId = await this._payments.AuthorizeAsync( cardNumber, amount + fee, cancellationToken );
-        await this._payments.CaptureAsync( authorizationId, cancellationToken );
+        public const string Name = "Metalama.Samples.CallTelemetry.Payments";
 
-        return authorizationId;
+        public static readonly ActivitySource ActivitySource = new( Name );
+
+        private static readonly Meter _meter = new( Name );
+
+        public static readonly Counter<long> Calls = _meter.CreateCounter<long>( "payments.client.calls" );
+
+        public static readonly Histogram<double> Duration =
+            _meter.CreateHistogram<double>( "payments.client.duration", unit: "ms" );
     }
 }
 
-public class PriceList
+namespace Metalama.Samples.CallTelemetry3.Tests.RecordSdkMetrics
 {
-    private readonly PaymentClient _payments = new();
+    public class CheckoutService
+    {
+        private readonly PaymentClient _payments = new();
 
-    public decimal GetPriceWithFee( decimal price ) => price + this._payments.GetFee( price );
+        public async Task<string> CheckoutAsync( string cardNumber, decimal amount, CancellationToken cancellationToken = default )
+        {
+            var fee = this._payments.GetFee( amount );
+            var authorizationId = await this._payments.AuthorizeAsync( cardNumber, amount + fee, cancellationToken );
+            await this._payments.CaptureAsync( authorizationId, cancellationToken );
+
+            return authorizationId;
+        }
+    }
+
+    public class PriceList
+    {
+        private readonly PaymentClient _payments = new();
+
+        public decimal GetPriceWithFee( decimal price ) => price + this._payments.GetFee( price );
+    }
 }
