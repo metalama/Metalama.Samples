@@ -79,6 +79,14 @@ public static class PermissionMatrix
         Op( "INV-9: Change the owner of a sales invoice", org => org.SalesInvoice.Owner = org.Mia, Mia ),
         Op( "INV-10: Move a sales invoice to Marketing", org => org.SalesInvoice.TransferTo( org.Marketing ), Mia ),
         Op( "INV-10: Move a sales invoice to Engineering", org => org.SalesInvoice.TransferTo( org.Engineering ) ),
+        Op( "INV-11: Read the notes of a sales invoice", org => _ = org.SalesInvoice.Notes.Count, Sam, Mia, Ada, Otto, Grace ),
+        Op( "INV-11: Add a note to a sales invoice", org => org.SalesInvoice.Notes.Add( "Call back on Monday" ), Sam, Mia ),
+        Op(
+            "INV-11: Add a note to an approved sales invoice",
+            org => org.SalesInvoice.Notes.Add( "Approved by phone" ),
+            arrange: org => org.SalesInvoice.Approve(),
+            Sam,
+            Mia ),
 
         // Customers.
         Op( "CUS-1: Read a customer name", org => _ = org.Fabrikam.Name, Sam, Mia, Ada, Otto, Grace ),

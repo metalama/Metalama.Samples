@@ -216,4 +216,21 @@ public class PersistenceTests : IAsyncLifetime
     [Fact]
     public async Task UnknownUser_CannotStartARequest()
         => await Assert.ThrowsAsync<InvalidOperationException>( () => this._org.Requests.RunAsync( "Mallory", _ => Task.CompletedTask ) );
+
+    [Fact]
+    public async Task NotesAddedThroughTheSecuredView_ArePersisted()
+    {
+        using ( this._org.SignIn( this._org.Sam ) )
+        {
+            this._org.SalesInvoice.Notes.Add( "Call back on Monday" );
+            await this._org.SaveChangesAsync();
+        }
+
+        await using var reloaded = await this._org.ReloadAsync();
+
+        using ( SecurityContext.RunAsSystem() )
+        {
+            Assert.Equal( ["Call back on Monday"], reloaded.SalesInvoice.Notes );
+        }
+    }
 }

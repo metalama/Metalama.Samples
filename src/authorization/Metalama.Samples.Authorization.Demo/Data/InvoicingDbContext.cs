@@ -63,6 +63,7 @@ public sealed class InvoicingDbContext( DbContextOptions<InvoicingDbContext> opt
                     invoice.HasOne<User>( "CreatorUser" ).WithMany();
                     invoice.Ignore( i => i.Creator );
                     invoice.OwnsMany( i => i.Lines, line => UseSingleColumnKey( line ) );
+                    invoice.PrimitiveCollection( i => i.Notes );
                 } );
 
         ConfigureSecurable<Budget>( modelBuilder )

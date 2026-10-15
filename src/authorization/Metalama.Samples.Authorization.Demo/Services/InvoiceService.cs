@@ -37,6 +37,13 @@ public sealed class InvoiceService( InvoicingDbContext db, IInvoiceSender sender
         await db.SaveChangesAsync( cancellationToken );
     }
 
+    public async Task AddNoteAsync( string number, string note, CancellationToken cancellationToken = default )
+    {
+        var invoice = await this.GetAsync( number, cancellationToken );
+        invoice.Notes.Add( note );
+        await db.SaveChangesAsync( cancellationToken );
+    }
+
     public async Task ChangeCustomerAsync( string number, string customerName, CancellationToken cancellationToken = default )
     {
         var invoice = await this.GetAsync( number, cancellationToken );

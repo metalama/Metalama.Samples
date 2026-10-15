@@ -13,6 +13,10 @@ public class Folder : InMemoryRoleBasedSecurable
     [RequiresPermission( PermissionNames.Read, PermissionNames.Write )]
     public string? Title { get; set; }
 
+    // The getter returns a secured view of the list.
+    [RequiresPermission( PermissionNames.Read, PermissionNames.Write )]
+    public IList<string> Tags { get; } = new List<string>();
+
     protected override IRoleBasedSecurable? SecurityParent => this.Parent;
 
     public override string ToString() => "folder";

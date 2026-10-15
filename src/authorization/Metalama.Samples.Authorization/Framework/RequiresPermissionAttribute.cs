@@ -106,7 +106,15 @@ public sealed class RequiresPermissionAttribute : Aspect, IAspect<IMethod>, IAsp
         builder.OverrideAccessors(
             secureGetter ? (GetterTemplateSelector) nameof(this.GetTemplate) : default,
             secureSetter ? nameof(this.SetTemplate) : null,
-            args: new { readPermission, writePermission, member = GetMemberName( target ) } );
+            args: new
+            {
+                readPermission,
+                writePermission,
+                member = GetMemberName( target ),
+
+                // A list returned by a secured getter is wrapped, so that changing it demands the write permission.
+                wrapCollection = CollectionTypes.Classify( target.Type ) == CollectionKind.Wrappable
+            } );
     }
 
     public void BuildAspect( IAspectBuilder<IParameter> builder )
@@ -151,9 +159,15 @@ public sealed class RequiresPermissionAttribute : Aspect, IAspect<IMethod>, IAsp
     private dynamic? GetTemplate(
         [CompileTime] string readPermission,
         [CompileTime] string writePermission,
-        [CompileTime] string member )
+        [CompileTime] string member,
+        [CompileTime] bool wrapCollection )
     {
         AccessGuard.Demand( meta.This, readPermission, member, AccessKind.Read );
+
+        if ( wrapCollection )
+        {
+            return SecuredCollection.Wrap( meta.Proceed(), meta.This, writePermission, member );
+        }
 
         return meta.Proceed();
     }
@@ -163,7 +177,8 @@ public sealed class RequiresPermissionAttribute : Aspect, IAspect<IMethod>, IAsp
         dynamic? value,
         [CompileTime] string readPermission,
         [CompileTime] string writePermission,
-        [CompileTime] string member )
+        [CompileTime] string member,
+        [CompileTime] bool wrapCollection )
     {
         AccessGuard.Demand( meta.This, writePermission, member, AccessKind.Write );
         meta.Proceed();

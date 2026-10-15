@@ -37,6 +37,12 @@ public sealed class ApplyDefaultPermissionsAttribute : TypeAspect
         "'{0}' is a static member of the secured type '{1}'. A static member has no instance on which to check a permission. " +
         "Move it to another type, or exclude it explicitly with [AuthorizationOptions( IsDefaultSecuringEnabled = false )]." );
 
+    private static readonly DiagnosticDefinition<(IDeclaration Member, IType Type)> _mutableCollectionWarning = new(
+        "AUTH003",
+        Severity.Warning,
+        "'{0}' exposes the mutable collection type '{1}': any caller who can read it can change its content without " +
+        "the write permission. Declare it as IList<T> or ICollection<T>, which the getter wraps in a secured view, or as a read-only type." );
+
     public override void BuildAspect( IAspectBuilder<INamedType> builder )
     {
         builder.Outbound
@@ -118,13 +124,22 @@ public sealed class ApplyDefaultPermissionsAttribute : TypeAspect
             _ => false
         };
 
-        if ( options == null || hasCheck || !IsExposed( member, options ) )
+        if ( options == null || !IsExposed( member, options ) )
         {
             return;
         }
 
-        var warning = member.IsStatic ? _staticMemberWarning : _unsecuredMemberWarning;
-        context.Diagnostics.Report( warning.WithArguments( (member, member.DeclaringType) ) );
+        // A secured getter protects the reference, not the content of a mutable collection.
+        if ( member is IFieldOrProperty { Type: var type } && CollectionTypes.Classify( type ) == CollectionKind.Mutable )
+        {
+            context.Diagnostics.Report( _mutableCollectionWarning.WithArguments( (member, type) ) );
+        }
+
+        if ( !hasCheck )
+        {
+            var warning = member.IsStatic ? _staticMemberWarning : _unsecuredMemberWarning;
+            context.Diagnostics.Report( warning.WithArguments( (member, member.DeclaringType) ) );
+        }
     }
 
     // To secure a field, Metalama turns it into a property. The aspect is on the field, and the final code model

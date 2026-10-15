@@ -55,6 +55,9 @@ await Expect.AllowedAsync( "Ada records the full payment", () => InvoicesAsync( 
 await Expect.AllowedAsync( "Ada voids the engineering invoice", () => InvoicesAsync( "Ada", s => s.VoidAsync( "ENG-0001", "Duplicate" ) ) );
 await Expect.DeniedAsync( "Ada edits invoice content", () => InvoicesAsync( "Ada", s => s.AddLineAsync( "MKT-0001", "Discount", 1, -100 ) ) );
 await Expect.DeniedAsync( "Otto voids the marketing invoice", () => InvoicesAsync( "Otto", s => s.VoidAsync( "MKT-0001", "Audit" ) ) );
+await Expect.AllowedAsync( "Sam adds a note to the paid invoice", () => InvoicesAsync( "Sam", s => s.AddNoteAsync( "SAL-0001", "Customer asked for a copy." ) ) );
+await Expect.DeniedAsync( "Ada adds a note to the invoice", () => InvoicesAsync( "Ada", s => s.AddNoteAsync( "SAL-0001", "Paid by bank transfer." ) ) );
+await Expect.AllowedAsync( "Ada reads the notes", () => InvoicesAsync( "Ada", async s => _ = (await s.GetAsync( "SAL-0001" )).Notes.Count ) );
 
 Console.WriteLine( "Customer data: per-type and per-member options" );
 await Expect.AllowedAsync( "Sam updates the customer email", () => CustomersAsync( "Sam", s => s.ChangeEmailAsync( "Fabrikam", "invoices@fabrikam.example" ) ) );
