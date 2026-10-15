@@ -1,9 +1,9 @@
 ---
 uid: samples
-summary: "The document provides tutorial examples for using Metalama, covering topics like validation, logging, caching, exception handling, property change notification, change tracking, cloning, memento pattern, enum view-model, shared fabric, and ToString implementation."
+summary: "The document provides tutorial examples for using Metalama, covering validation, logging, caching, exception handling, property change notification, change tracking, cloning, the memento, builder and singleton patterns, equality comparison, enum view-models, shared fabrics, ToString implementation, call tracing, interception proxies, metrics instrumentation, and MAUI exception tracking."
 keywords: "Metalama examples, Metalama samples"
 created-date: 2023-03-28
-modified-date: 2024-09-09
+modified-date: 2026-10-15
 ---
 
 # Commented examples
@@ -26,6 +26,9 @@ This chapter shows a few examples that demonstrate how to use Metalama. Each of 
 | [Builder](builder/README.md)                              | Implements the Builder pattern, i.e. a mutable `Builder` type nested inside an immutable type. |
 | [Equatable](comparison/README.md)                            | Implements the complete equality comparison pattern, including the `IEquatable<T>` method, and more. |
 | [Tracing calls](call-tracing/README.md)                   | Traces the calls to a library from one file, with interceptors, to investigate a problem without a debugger. |
+| [Interception proxies](Metalama.Samples.Proxy/README.md)  | Generates an interception proxy for an interface at compile time, without run-time code generation. |
+| [Metrics](metrics/Metalama.Samples.Metrics/README.md)     | Instruments methods with `System.Diagnostics.Metrics` counters and generates their dependency injection registration. |
+| [MAUI Exception Tracking](maui-exception-tracking/README.md) | Tracks exceptions in a .NET MAUI application and records the visual element that caused each one. |
 
 If you have developed an original aspect with Metalama, consider [contributing](contributing.md) to this list.
 
