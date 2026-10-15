@@ -61,12 +61,13 @@ The project file declares the `Test` configuration and defines the symbol:
 
 ## Testing InvoiceService
 
-The xUnit project references the legacy project with the `SetConfiguration` metadata, so that it uses the `Test`
-build of this project, whatever its own configuration:
+The xUnit project references the legacy project with the `AdditionalProperties` metadata, so that it uses the `Test`
+build of this project, whatever its own configuration. Unlike the `SetConfiguration` metadata, `AdditionalProperties`
+is not overridden by the configuration of the solution when you build the solution:
 
 ```xml
 <ProjectReference Include="..\..\legacy-testing\legacy-testing-1\Metalama.Samples.LegacyTesting1.csproj"
-                  SetConfiguration="Configuration=Test"/>
+                  AdditionalProperties="Configuration=Test"/>
 ```
 
 The tests provide the data of the database and the template file to the fakes, call `InvoiceService`, and check the
