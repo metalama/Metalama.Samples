@@ -130,9 +130,24 @@ items:
           topicUid: sample-comparison-3
         - name: Step 4. Customizing and optimizing
           topicUid: sample-comparison-4
-
     - name: Intercepting calls
       items:
+        - name: Tracing calls
+          topicUid: sample-call-tracing
+          items:
+            - name: Step 1. Tracing calls to a library
+              topicUid: sample-call-tracing-1
+            - name: Step 2. Enabling tracing only in a trace build
+              topicUid: sample-call-tracing-2
+        - name: Auditing and monitoring calls
+          topicUid: sample-call-telemetry
+          items:
+            - name: Step 1. Auditing calls to sensitive APIs
+              topicUid: sample-call-telemetry-1
+            - name: Step 2. Producing trace spans for SDK calls
+              topicUid: sample-call-telemetry-2
+            - name: Step 3. Recording metrics
+              topicUid: sample-call-telemetry-3
         - name: Replacing an implementation
           topicUid: sample-legacy-replacement
           items:
