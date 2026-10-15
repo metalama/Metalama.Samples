@@ -1,6 +1,6 @@
 ---
 uid: samples
-summary: "The document provides tutorial examples for using Metalama, covering validation, logging, caching, exception handling, property change notification, change tracking, cloning, the memento, builder and singleton patterns, equality comparison, enum view-models, shared fabrics, ToString implementation, call tracing, interception proxies, metrics instrumentation, and MAUI exception tracking."
+summary: "The document provides tutorial examples for using Metalama, covering validation, logging, caching, exception handling, property change notification, change tracking, cloning, the memento, builder and singleton patterns, equality comparison, enum view-models, shared fabrics, ToString implementation, call tracing, call auditing and monitoring, interception proxies, metrics instrumentation, and MAUI exception tracking."
 keywords: "Metalama examples, Metalama samples"
 created-date: 2023-03-28
 modified-date: 2026-10-15
@@ -26,6 +26,7 @@ This chapter shows a few examples that demonstrate how to use Metalama. Each of 
 | [Builder](builder/README.md)                              | Implements the Builder pattern, i.e. a mutable `Builder` type nested inside an immutable type. |
 | [Equatable](comparison/README.md)                            | Implements the complete equality comparison pattern, including the `IEquatable<T>` method, and more. |
 | [Tracing calls](call-tracing/README.md)                   | Traces the calls to a library from one file, with interceptors, to investigate a problem without a debugger. |
+| [Auditing and monitoring calls](call-telemetry/README.md) | Audits the calls to sensitive APIs and produces spans and metrics for the calls to an SDK, with interceptors. |
 | [Interception proxies](Metalama.Samples.Proxy/README.md)  | Generates an interception proxy for an interface at compile time, without run-time code generation. |
 | [Metrics](metrics/Metalama.Samples.Metrics/README.md)     | Instruments methods with `System.Diagnostics.Metrics` counters and generates their dependency injection registration. |
 | [MAUI Exception Tracking](maui-exception-tracking/README.md) | Tracks exceptions in a .NET MAUI application and records the visual element that caused each one. |
