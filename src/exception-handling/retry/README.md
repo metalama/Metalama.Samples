@@ -1,9 +1,9 @@
 ---
 uid: sample-retry
-summary: "How to build an aspect that automatically retries a method after a transient failure, with async support, logging, and a Polly-based variant."
-keywords: "retry mechanisms, C#, .NET, transient faults, exponential backoff, automatic retries, async support, logging, Polly"
+summary: "How to build an aspect that automatically retries a method after a transient failure, with async support, logging, a Polly-based variant, and interceptors for code you do not own."
+keywords: "retry mechanisms, C#, .NET, transient faults, exponential backoff, automatic retries, async support, logging, Polly, interceptors"
 created-date: 2023-04-06
-modified-date: 2024-09-09
+modified-date: 2026-10-15
 ---
 
 # Sample: retry
@@ -24,7 +24,8 @@ We start with the most basic implementation and add features progressively.
 | <xref:sample-retry-2> | In this example, we add support for `async` methods and call `await Task.Delay` instead of `Thread.Sleep`. |
 | <xref:sample-retry-3> | Here, we add support for `CancellationToken` parameters, which we pass to `Task.Delay`. |
 | <xref:sample-retry-4> | We now add proper logging using `ILogger` and dependency injection. |
-| <xref:sample-retry-5> | Finally, we show how to use Polly instead of our custom and naïve implementation of the retry logic. |
+| <xref:sample-retry-5> | We show how to use Polly instead of our custom and naïve implementation of the retry logic. |
+| <xref:sample-retry-6> | Finally, we retry the calls to a library that we do not own, with interceptors instead of an aspect. |
 
 
 
