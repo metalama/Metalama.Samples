@@ -1,5 +1,6 @@
 ---
 uid: sample-comparison-4
+browse-source: .
 ---
 
 # Equality comparison example, step 4: Customizing equality comparers

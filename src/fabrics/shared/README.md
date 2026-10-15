@@ -1,5 +1,6 @@
 ---
 uid: sample-shared-fabric
+browse-source: .
 summary: "This document is an example by Whit Waldo demonstrating shared fabrics, including projects with logging aspects and a project fabric for applying these aspects."
 keywords: "shared fabrics, project fabric, Metalama aspects, .NET, shared aspects, subdirectory, GitHub"
 created-date: 2024-09-09

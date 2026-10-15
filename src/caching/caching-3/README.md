@@ -1,5 +1,6 @@
 ---
 uid: sample-cache-3
+browse-source: .
 level: 300
 summary: "This document explains how to build a cache key using a custom attribute `[CacheKeyMember]` and an `ICacheKey` interface, detailing the design and implementation process."
 keywords: "cache key, caching implementation"

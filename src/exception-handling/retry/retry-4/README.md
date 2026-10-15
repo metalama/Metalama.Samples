@@ -1,5 +1,6 @@
 ---
 uid: sample-retry-4
+browse-source: .
 level: 300
 summary: "This document describes adding real-world logging to a retry mechanism, including code updates and warnings about logging sensitive information."
 keywords: "logging, retry"

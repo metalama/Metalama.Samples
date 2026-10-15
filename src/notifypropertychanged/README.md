@@ -1,5 +1,6 @@
 ---
 uid: sample-notifypropertychanged
+browse-source: .
 summary: "This document explains how to implement a custom `INotifyPropertyChanged` aspect using Metalama to reduce boilerplate code in .NET applications, highlighting its implementation and limitations."
 keywords: "INotifyPropertyChanged, OnPropertyChanged, C# implement INotifyPropertyChanged, data binding, MVVM pattern, aspect"
 created-date: 2023-03-28

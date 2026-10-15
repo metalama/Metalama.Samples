@@ -1,5 +1,6 @@
 ---
 uid: sample-string-normalization
+browse-source: .
 level: 100
 summary: "This project demonstrates simple string normalization aspects like trimming, upper-casing, and UTF normalization, using a base aspect class to handle common behaviors."
 keywords: "string normalization, trimming, upper-casing, UTF normalization, .NET"

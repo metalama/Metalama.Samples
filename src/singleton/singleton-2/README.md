@@ -1,5 +1,6 @@
 ---
 uid: sample-singleton-2
+browse-source: .
 summary: "This document explains how to implement the modern Singleton pattern. The modern singleton pattern, managed by dependency injection, requires a public constructor but risks multiple instances. Metalama architecture validation can mitigate this."
 keywords: "Singleton pattern, dependency injection"
 created-date: 2024-07-09

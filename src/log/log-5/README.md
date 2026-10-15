@@ -1,5 +1,6 @@
 ---
 uid: sample-log-5
+browse-source: .
 level: 300
 summary: "The document explains implementing an aspect that requires an existing `ILogger` field, reporting errors if missing or incorrect, and handling eligibility for static methods."
 keywords: "logging aspect, eligibility"

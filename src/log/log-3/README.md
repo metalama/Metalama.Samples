@@ -1,5 +1,6 @@
 ---
 uid: sample-log-3
+browse-source: .
 level: 250
 summary: "This document explains how to enhance logging by including runtime parameter values and return values, while cautioning against logging sensitive information."
 keywords: "logging, runtime parameter values, return values"

@@ -1,5 +1,6 @@
 ---
 uid: sample-memento-1
+browse-source: .
 level: 300
 summary: "This document explains the implementation of the Memento pattern in a WPF application, focusing on creating and managing mementos without type inheritance."
 keywords: "Memento pattern, SaveToMemento method, RestoreMemento method, INotifyPropertyChanged interface, IMementoable interface"

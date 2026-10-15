@@ -1,5 +1,6 @@
 ---
 uid: sample-log-2
+browse-source: .
 level: 200
 summary: "This document describes enhancing a logging aspect to include method names and signatures, improving its utility across multiple methods."
 keywords: "logging aspect"

@@ -1,5 +1,6 @@
 ---
 uid: sample-comparison-3
+browse-source: .
 ---
 
 # Equality comparison example, step 3: Hand-picking equality members

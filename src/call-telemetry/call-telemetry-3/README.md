@@ -1,5 +1,6 @@
 ---
 uid: sample-call-telemetry-3
+browse-source: .
 level: 300
 summary: "This example records a counter and a duration histogram of System.Diagnostics.Metrics for each call to a third-party SDK, tagged with the method and the calling type, with a T# template interceptor."
 keywords: "interceptors, metrics, OpenTelemetry, System.Diagnostics.Metrics, Meter, Counter, Histogram, TagList, T# template, Configure, AddParameter, project fabric"

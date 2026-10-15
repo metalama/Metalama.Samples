@@ -1,5 +1,6 @@
 ---
 uid: sample-log-6
+browse-source: .
 level: 300
 summary: "This document explains how to programmatically add logging aspects to all public methods in a namespace using Metalama's ProjectFabric, avoiding manual attribute application."
 keywords: "logging aspect,  programmatically, add aspects, fabric"

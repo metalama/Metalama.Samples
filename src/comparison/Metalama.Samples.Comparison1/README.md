@@ -1,5 +1,6 @@
 ---
 uid: sample-comparison-1
+browse-source: .
 ---
 
 # Equality comparison example, step 1: a minimal implementation

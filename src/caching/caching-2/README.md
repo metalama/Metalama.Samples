@@ -1,5 +1,6 @@
 ---
 uid: sample-cache-2
+browse-source: .
 level: 250
 summary: "This document enhances caching by adding eligibility checks to prevent applying the aspect to `void` methods or methods with `out` or `ref` parameters."
 keywords: "caching, eligibility checks"

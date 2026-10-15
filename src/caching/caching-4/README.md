@@ -1,5 +1,6 @@
 ---
 uid: sample-cache-4
+browse-source: .
 level: 300
 summary: "This document discusses generating cache keys for external types by introducing cache key builders and compile-time error reporting for unsupported types."
 keywords: "cache key"

@@ -1,5 +1,6 @@
 ---
 uid: sample-memento-2
+browse-source: .
 level: 300
 summary: "This article explains how to extend a Memento design pattern to support type inheritance using the Metalama framework, including validation and method overrides."
 keywords: "Memento design pattern, IMementoable, nested type"

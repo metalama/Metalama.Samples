@@ -1,5 +1,6 @@
 ---
 uid: sample-dirty-4
+browse-source: .
 summary: "This article explains how to implement the ability to revert changes in objects using the `IRevertibleChangeTracking` interface in .NET."
 keywords: "IRevertibleChangeTracking, reverting changes, RejectChanges method, .NET, AcceptChanges method"
 created-date: 2023-04-18
