@@ -88,6 +88,14 @@ A few details are worth noting:
 * The eligibility rules reject static members, `out` parameters, and parameters whose type is not securable. Static members have no instance on which to check a permission. A parameter check needs a securable argument: passing an object that no policy can secure would always be denied, so it is a build error. Abstract members are rejected except through inheritance, with `builder.ExceptForInheritance().MustNotBeAbstract()`.
 * When the attribute does not name a permission, the defaults of `AuthorizationOptions` apply. A method requires `Write` by default.
 
+### Permissions are not transitive
+
+The permission of a member is checked when the member is entered, and only then. It does not grant the permissions of the members that the member accesses: when a method reads or writes a secured field or property, of the same object or of another one, this access is checked on its own, for the current subject. For instance, a method that requires `Publish` and changes the `Body` property of the same object also requires `Read` and `Write` on the object, because it reads and writes `Body`.
+
+This rule follows from the design: each check protects one member, whatever the code that calls it. A member that granted more rights to the code that it runs would turn every bug in its body into a way around the policy.
+
+The rule has a consequence for aggregates. It is common that a user may see an aggregate, such as a total or a count, but not the details that it is computed from. An aggregate computed from secured members requires the permissions of these members. An aggregate computed from private state requires only its own permission, because private members are never secured. The unit tests in `NestedAccessTests` verify both cases.
+
 ### ISecurable and SecurableType
 
 `ISecurable` is an empty interface that marks the securable classes. The `[SecurableType]` aspect is applied to this interface, and Metalama propagates an `[Inheritable]` aspect from an interface to every class that implements it, and to their derived classes. `IRoleBasedSecurable` derives from `ISecurable`, so the demo's `Entity`, which derives from `RoleBasedSecurable`, has no attribute at all:
@@ -433,6 +441,7 @@ The aspect tests in `Metalama.Samples.Authorization.Tests` verify the generated 
 `Metalama.Samples.Authorization.UnitTests` tests the framework on small test types, independently of the demo:
 
 * `SecurityContextTests`: fail-closed behavior, system scopes, and context isolation across `await` and concurrent tasks.
+* `NestedAccessTests`: the permission of a member does not grant the permissions of the members that it accesses, and aggregates over private state.
 * `AccessGuardTests`: audit records of denials and grants, labels in messages, and an auditor that runs without privileges.
 * `GuardedListTests`: the owner set on the first access and only once, changes denied without the write permission, read-only properties guarded too, the getter that fails closed on an ordinary list, and the owner hook.
 * `RoleBasedPolicyTests`: allow and deny rules, class hierarchy, built-in and application-defined computed roles, role inheritance through any parent, self-assignment, and the immutability of the policy.

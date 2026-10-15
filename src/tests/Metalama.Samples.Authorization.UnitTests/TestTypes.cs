@@ -33,6 +33,34 @@ public class Folder : InMemoryRoleBasedSecurable
 public class SpecialFolder : Folder;
 
 /// <summary>
+/// A report whose members access other secured members, to show that permissions are not transitive.
+/// </summary>
+public sealed class Report : InMemoryRoleBasedSecurable
+{
+    private string? _draftNotes;
+
+    // A detail.
+    [RequiresPermission( PermissionNames.Read, PermissionNames.Write )]
+    public string? Body { get; set; }
+
+    // An aggregate computed from a secured detail: reading it also reads Body, which is checked.
+    [RequiresPermission( "Summarize" )]
+    public int BodyLength => this.Body?.Length ?? 0;
+
+    // An aggregate computed from private state, which is never secured.
+    [RequiresPermission( "Summarize" )]
+    public int DraftNotesLength => this._draftNotes?.Length ?? 0;
+
+    // A method that reads and writes a secured property: each access is checked.
+    [RequiresPermission( "Publish" )]
+    public void Publish() => this.Body = this.Body + " (published)";
+
+    public void SetDraftNotes( string notes ) => this._draftNotes = notes;
+
+    protected override IRoleBasedSecurable? SecurityParent => null;
+}
+
+/// <summary>
 /// A folder that returns an ordinary list from a secured property: the getter fails closed.
 /// </summary>
 public sealed class UnguardedFolder : InMemoryRoleBasedSecurable
