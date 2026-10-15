@@ -1,5 +1,5 @@
 #if TEST_OPTIONS
-// @Include(../../universal-interceptor/weather-app/InterceptionFabric.cs)
+// @Include(../../../universal-interceptor/weather-app/InterceptionFabric.cs)
 #endif
 
 using Metalama.Samples.UniversalInterceptor.Weather;

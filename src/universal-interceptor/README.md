@@ -12,12 +12,12 @@ A team that adds logging, retry or auditing around a whole third-party API wants
 C#. In the same way, tests often need to replace the behavior of the API with canned results. Both needs require that
 every call to the API, whatever its signature, goes through one run-time object.
 
-In this series, the application calls `WeatherClient`, a class of a separate class library whose source code cannot be
-changed. The class has synchronous and asynchronous methods, and methods with `ref` and `out` parameters. A project
+In this example, the application calls `WeatherClient`, a class of a separate class library whose source code cannot
+be changed. The class has synchronous and asynchronous methods, and methods with `ref` and `out` parameters. A project
 fabric redirects every call to `WeatherClient` to a _universal interceptor_: an object that implements the
-`IUniversalInterceptor` interface. The calling code does not change in the source code:
+`IUniversalInterceptor` interface. The calling code does not change in the source code.
 
-[!metalama-compare universal-interceptor-2/WeatherReport.cs]
+[!metalama-project-buttons weather-app]
 
 ## How it works
 
@@ -34,22 +34,24 @@ things:
 The run-time object receives the tuple as a type parameter `TArgs`, constrained to `ITuple`. Its code does not depend
 on the signature of the intercepted method, so one class handles every method of the API.
 
-The run-time interface, the T# templates of the generated methods and the `RedirectToUniversalInterceptor` method are
-in the `interceptor-library` project of the series, which the three steps share.
-
 ## In this series
+
+The example is one project, `weather-app`. It contains the run-time interface, the T# templates of the generated
+methods, the `RedirectToUniversalInterceptor` method, the `CallLog` interceptor and the application. The articles of
+this series explain the project one part at a time, from the simplest calls to the complete solution.
 
 | Article | Description |
 |---------|-------------|
-| <xref:sample-universal-interceptor-1> | A fabric redirects every call to `WeatherClient` to a `CallLog` object held in a static field. |
-| <xref:sample-universal-interceptor-2> | The `ref` and `out` arguments are written back to the call site, async methods are awaited, and calls on struct receivers are skipped. |
-| <xref:sample-universal-interceptor-3> | The interceptor is an `AsyncLocal<IUniversalInterceptor>`, so each xUnit test installs its own fake, and the tests run in parallel. |
+| <xref:sample-universal-interceptor-1> | Redirects the calls to synchronous methods to `CallLog`, which writes the method, the arguments and the result. |
+| <xref:sample-universal-interceptor-2> | Adds the methods that return a `Task`, a `Task<T>`, a `ValueTask` or a `ValueTask<T>`. |
+| <xref:sample-universal-interceptor-3> | Adds the methods with `ref` and `out` parameters, whose arguments are written back to the call site. |
+| <xref:sample-universal-interceptor-4> | Validates the member that gives the interceptor, skips the calls on struct receivers, and stores the interceptor in an `AsyncLocal<T>`, so that each xUnit test installs its own fake. |
 
 ## Comparison with the other interceptor examples
 
 The other examples of interceptors, <xref:sample-call-tracing> and <xref:sample-call-telemetry>, generate the behavior
 from a T# template. The static proxy example of this repository, in `src/Metalama.Samples.Proxy`, uses a run-time
-interface `IInterceptor` like this series, but it intercepts the members of an interface, not call sites.
+interface `IInterceptor` like this example, but it intercepts the members of an interface, not call sites.
 
 | | Per-method templates | Universal interceptor | Static proxy |
 |---|---|---|---|
@@ -71,7 +73,7 @@ The universal interceptor has these limitations:
 * Calls on a struct receiver are not intercepted. The tuple would contain a copy of the receiver, so the changes that
   the method makes to the receiver would be lost. `RedirectToUniversalInterceptor` leaves these calls unchanged and
   reports the warning `UNIV05`. Skip them in `ForEachSite` to remove the warning. See
-  <xref:sample-universal-interceptor-2>. The receiver of an extension method is an ordinary argument, so this rule
+  <xref:sample-universal-interceptor-4>. The receiver of an extension method is an ordinary argument, so this rule
   does not apply to it.
 * Methods that return an awaitable type and have `ref` or `out` parameters are not intercepted. The delegate of an
   async method receives the tuple by value, so the arguments could not be written back.

@@ -46,7 +46,8 @@ public class WeatherReportTests
     public Task DescribeHumidity_UsesTheCannedResult()
     {
         // The weather client knows the humidity of Prague, but the fake returns false.
-        var fake = new FakeWeatherInterceptor();
+        var fake = new FakeWeatherInterceptor()
+            .Returns( nameof(WeatherClient.TryGetHumidity), false );
 
         return InterceptorScope.RunAsync(
             fake,
