@@ -26,6 +26,7 @@ This chapter shows a few examples that demonstrate how to use Metalama. Each of 
 | [Builder](builder/README.md)                              | Implements the Builder pattern, i.e. a mutable `Builder` type nested inside an immutable type. |
 | [Equatable](comparison/README.md)                            | Implements the complete equality comparison pattern, including the `IEquatable<T>` method, and more. |
 | [Tracing calls](call-tracing/README.md)                   | Traces the calls to a library from one file, with interceptors, to investigate a problem without a debugger. |
+| [Auditing and monitoring calls](call-telemetry/README.md) | Audits the calls to sensitive APIs and produces spans and metrics for the calls to an SDK, with interceptors. |
 
 If you have developed an original aspect with Metalama, consider [contributing](contributing.md) to this list.
 
