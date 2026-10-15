@@ -33,6 +33,11 @@ var product = new Product( MetalamaDependencies.MetalamaSamples )
         [
             new DotNetComponent( dotNet11SdkVersion, DotNetComponentKind.Sdk ),
             new DotNetComponent( dotNet10SdkVersion, DotNetComponentKind.Sdk ),
+
+            // Required by the MAUI exception tracking example. Prerelease manifests must be allowed, because the
+            // main SDK of the product is a prerelease and the MAUI workload manifest of its feature band is
+            // therefore a prerelease too.
+            new DotNetWorkloadComponent( "maui-windows", includePreviews: true ),
         ]
     },
     GenerateNuGetConfig = true,

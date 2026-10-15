@@ -74,6 +74,10 @@ RUN dotnet tool install --global dotnet-dump;
 ENV PATH="C:\Users\ContainerAdministrator\.dotnet\tools;${PATH}"
 
 
+# Install .NET workload maui-windows
+RUN dotnet workload install maui-windows --include-previews
+
+
 # Epilogue
 # Configure .NET SDK
 ENV DOTNET_NOLOGO=1

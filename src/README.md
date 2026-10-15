@@ -1,6 +1,6 @@
 ---
 uid: samples
-summary: "The document provides tutorial examples for using Metalama, covering topics like validation, logging, caching, exception handling, property change notification, change tracking, cloning, memento pattern, enum view-model, shared fabric, and ToString implementation."
+summary: "The document provides tutorial examples for using Metalama, covering validation, logging, caching, exception handling, property change notification, change tracking, cloning, the memento, builder and singleton patterns, equality comparison, enum view-models, shared fabrics, ToString implementation, call tracing, call auditing and monitoring, interception proxies, metrics instrumentation, and MAUI exception tracking."
 keywords: "Metalama examples, Metalama samples"
 created-date: 2023-03-28
 modified-date: 2026-10-15
@@ -28,6 +28,9 @@ This chapter shows a few examples that demonstrate how to use Metalama. Each of 
 | [Tracing calls](call-tracing/README.md)                   | Traces the calls to a library from one file, with interceptors, to investigate a problem without a debugger. |
 | [Singleton](singleton/README.md)                          | Generates the boilerplate of the Singleton pattern and enforces it, with or without dependency injection. |
 | [Auditing and monitoring calls](call-telemetry/README.md) | Audits the calls to sensitive APIs and produces spans and metrics for the calls to an SDK, with interceptors. |
+| [Interception proxies](Metalama.Samples.Proxy/README.md)  | Generates an interception proxy for an interface at compile time, without run-time code generation. |
+| [Metrics](metrics/Metalama.Samples.Metrics/README.md)     | Instruments methods with `System.Diagnostics.Metrics` counters and generates their dependency injection registration. |
+| [MAUI Exception Tracking](maui-exception-tracking/README.md) | Tracks exceptions in a .NET MAUI application and records the visual element that caused each one. |
 
 If you have developed an original aspect with Metalama, consider [contributing](contributing.md) to this list.
 

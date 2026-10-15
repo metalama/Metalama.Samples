@@ -157,7 +157,13 @@ items:
               topicUid: sample-call-telemetry-2
             - name: Step 3. Recording metrics
               topicUid: sample-call-telemetry-3
+        - name: Generating interception proxies
+          topicUid: sample-proxy
 
+    - name: Metrics
+      topicUid: sample-metrics
+    - name: MAUI Exception Tracking
+      topicUid: sample-maui-exception-tracking
     - name: Shared Fabrics
       topicUid: sample-shared-fabric
     - name: Contributing
