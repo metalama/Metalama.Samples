@@ -1,1 +1,0 @@
-// Error AUTH001 on `Archive`: `[RequiresPermission] on 'Document.Archive()' does not name a permission and AuthorizationOptions.DefaultExecutePermission is not set.`

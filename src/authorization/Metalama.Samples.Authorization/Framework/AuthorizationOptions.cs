@@ -22,7 +22,9 @@ public sealed class AuthorizationOptions :
     IHierarchicalOptions<INamedType>,
     IHierarchicalOptions<IFieldOrProperty>,
     IHierarchicalOptions<IMethod>,
-    IHierarchicalOptions<IParameter>
+    IHierarchicalOptions<IParameter>,
+    IHierarchicalOptions<IIndexer>,
+    IHierarchicalOptions<IEvent>
 {
     /// <summary>
     /// Gets the permission required to read a field or property when <see cref="RequiresPermissionAttribute"/>
@@ -37,9 +39,8 @@ public sealed class AuthorizationOptions :
     public string? DefaultWritePermission { get; init; }
 
     /// <summary>
-    /// Gets the permission required to execute a method that has no <see cref="RequiresPermissionAttribute"/>,
-    /// in types with the <see cref="ApplyDefaultPermissionsAttribute"/> aspect. The default is <c>null</c>, which
-    /// means that such methods are not secured.
+    /// Gets the permission required to execute a method when <see cref="RequiresPermissionAttribute"/> does not
+    /// name one. The default is <see cref="PermissionNames.Write"/>, because a method typically changes the object.
     /// </summary>
     public string? DefaultExecutePermission { get; init; }
 

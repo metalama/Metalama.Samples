@@ -19,7 +19,7 @@ public sealed class Forecast : Entity
     // Reading requires ReadSensitive, from the namespace fabric. Writing keeps the default.
     public decimal Amount { get; set; }
 
-    // Requires Write, from the project fabric.
+    // Requires Write, the default permission of methods.
     public void Revise( decimal amount ) => this.Amount = amount;
 
     protected override IRoleBasedSecurable? SecurityParent => null;

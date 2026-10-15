@@ -14,12 +14,13 @@ public class Document
     [RequiresPermission( "Read", "Approve" )]
     public decimal Amount { get; set; }
 
-    // Non-public and static members are not secured by default.
+    // Non-public members are not secured by default.
     internal string? InternalNotes { get; set; }
 
+    // A static member cannot be secured: the validator reports warning AUTH002.
     public static int Count { get; set; }
 
-    // Methods are not secured unless AuthorizationOptions.DefaultExecutePermission is set.
+    // Methods are secured too, with Write by default.
     public void Publish() => this.Title = this._draft;
 
     public override string ToString() => this.Title ?? "";

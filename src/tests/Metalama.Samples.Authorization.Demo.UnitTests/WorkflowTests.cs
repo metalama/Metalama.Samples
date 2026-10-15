@@ -121,7 +121,7 @@ public class WorkflowTests : IAsyncLifetime
             {
                 var exception = Assert.Throws<AccessDeniedException>( () => this._org.Engineering.CreateInvoice( this._org.Fabrikam ) );
 
-                Assert.Same( this._org.Fabrikam, exception.Securable );
+                Assert.Equal( this._org.Fabrikam.SecurityLabel, exception.Securable );
                 Assert.Equal( "Department.CreateInvoice(customer)", exception.Member );
             } );
 
@@ -134,7 +134,7 @@ public class WorkflowTests : IAsyncLifetime
             {
                 var exception = Assert.Throws<AccessDeniedException>( () => this._org.SalesInvoice.TransferTo( this._org.Engineering ) );
 
-                Assert.Same( this._org.Engineering, exception.Securable );
+                Assert.Equal( this._org.Engineering.SecurityLabel, exception.Securable );
                 Assert.Equal( "Invoice.TransferTo(target)", exception.Member );
                 Assert.Same( this._org.Sales, this._org.SalesInvoice.Department );
             } );
@@ -213,5 +213,24 @@ public class WorkflowTests : IAsyncLifetime
         this.As( this._org.Erin, () => this._org.EngineeringInvoice.AddLine( "Review", 1, 10 ) );
         this.As( this._org.Alice, () => this._org.Contoso.AssignRole( this._org.Erin, DemoRoles.Auditor ) );
         this.Denied( this._org.Erin, () => this._org.EngineeringInvoice.AddLine( "Review", 1, 10 ) );
+    }
+
+    [Fact]
+    public void ReassigningTheOwner_DoesNotBypassTheFourEyesPrinciple()
+    {
+        Invoice invoice = null!;
+
+        this.As(
+            this._org.Mia,
+            () =>
+            {
+                invoice = this._org.Sales.CreateInvoice( this._org.Fabrikam );
+                invoice.AddLine( "Training", 1, 900 );
+
+                // Mia gives the invoice to Sam, so she is no longer the owner, but she remains the creator.
+                invoice.Owner = this._org.Sam;
+            } );
+
+        this.Denied( this._org.Mia, invoice.Approve );
     }
 }

@@ -1,3 +1,4 @@
+// Warning AUTH002 on `Count`: `'Document.Count' is a static member of the secured type 'Document'. A static member has no instance on which to check a permission. Move it to another type, or exclude it explicitly with [AuthorizationOptions( IsDefaultSecuringEnabled = false )].`
 namespace Metalama.Samples.Authorization.Tests.DefaultPermissions;
 [ApplyDefaultPermissions]
 public class Document
@@ -48,10 +49,15 @@ public class Document
       _amount = value;
     }
   }
-  // Non-public and static members are not secured by default.
+  // Non-public members are not secured by default.
   internal string? InternalNotes { get; set; }
+  // A static member cannot be secured: the validator reports warning AUTH002.
   public static int Count { get; set; }
-  // Methods are not secured unless AuthorizationOptions.DefaultExecutePermission is set.
-  public void Publish() => this.Title = this._draft;
+  // Methods are secured too, with Write by default.
+  public void Publish()
+  {
+    AccessGuard.Demand(this, "Write", "Document.Publish", AccessKind.Execute);
+    this.Title = this._draft;
+  }
   public override string ToString() => this.Title ?? "";
 }

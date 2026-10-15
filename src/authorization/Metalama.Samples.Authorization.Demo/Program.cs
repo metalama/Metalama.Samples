@@ -45,6 +45,8 @@ await Expect.AllowedAsync( "Mia approves Sam's invoice", () => InvoicesAsync( "M
 await Expect.FailsAsync<InvalidOperationException>( "Mia adds a line to the approved invoice (business rule)", () => InvoicesAsync( "Mia", s => s.AddLineAsync( "SAL-0001", "Extra", 1, 1 ) ) );
 await Expect.DeniedAsync( "Mia approves her own marketing invoice", () => InvoicesAsync( "Mia", s => s.ApproveAsync( "MKT-0001" ) ) );
 await Expect.DeniedAsync( "Grace, marketing manager but also auditor, approves the marketing invoice", () => InvoicesAsync( "Grace", s => s.ApproveAsync( "MKT-0001" ) ) );
+await Expect.AllowedAsync( "Mia gives her marketing invoice to Grace", () => InvoicesAsync( "Mia", s => s.ChangeOwnerAsync( "MKT-0001", "Grace" ) ) );
+await Expect.DeniedAsync( "Mia approves the invoice that she created, now owned by Grace", () => InvoicesAsync( "Mia", s => s.ApproveAsync( "MKT-0001" ) ) );
 
 Console.WriteLine( "Sending and collecting" );
 await Expect.AllowedAsync( "Sam sends the approved invoice", () => InvoicesAsync( "Sam", s => s.SendAsync( "SAL-0001" ) ) );
@@ -61,6 +63,7 @@ await Expect.DeniedAsync( "Sam reads the tax ID", () => CustomersAsync( "Sam", s
 await Expect.AllowedAsync( "Mia raises the credit limit", () => CustomersAsync( "Mia", s => s.ChangeCreditLimitAsync( "Fabrikam", 80_000 ) ) );
 await Expect.AllowedAsync( "Mia reads the tax ID", () => CustomersAsync( "Mia", s => s.GetTaxIdAsync( "Fabrikam" ) ) );
 await Expect.DeniedAsync( "Alice, administrator, reads the tax ID", () => CustomersAsync( "Alice", s => s.GetTaxIdAsync( "Fabrikam" ) ) );
+await Expect.DeniedAsync( "Mia moves the customer to Engineering", () => CustomersAsync( "Mia", s => s.MoveToDepartmentAsync( "Fabrikam", "ENG" ) ) );
 
 Console.WriteLine( "Budgets: namespace-level options" );
 await Expect.DeniedAsync( "Sam reads the sales budget", () => BudgetsAsync( "Sam", s => s.GetRemainingAsync( "SAL", 2026 ) ) );
@@ -73,6 +76,7 @@ Console.WriteLine( "Moving an invoice: checking the parameter" );
 await Expect.AllowedAsync( "Mia creates a sales invoice", () => InvoicesAsync( "Mia", s => s.CreateAsync( "SAL", "Fabrikam" ) ) );
 await Expect.AllowedAsync( "Mia moves it to Marketing, which she also manages", () => InvoicesAsync( "Mia", s => s.TransferAsync( "SAL-0002", "MKT" ) ) );
 await Expect.DeniedAsync( "Mia moves it to Engineering", () => InvoicesAsync( "Mia", s => s.TransferAsync( "SAL-0002", "ENG" ) ) );
+await Expect.DeniedAsync( "Sam bills an invoice to a customer that he cannot see", () => InvoicesAsync( "Sam", s => s.ChangeCustomerAsync( "SAL-0001", "Northwind Traders" ) ) );
 await Expect.DeniedAsync( "Tom creates an invoice for a customer of another department", () => InvoicesAsync( "Tom", s => s.CreateAsync( "ENG", "Fabrikam" ) ) );
 
 Console.WriteLine( "Managing staff" );
@@ -81,6 +85,8 @@ await Expect.AllowedAsync( "Alice creates a user account for Nina", () => StaffA
 await Expect.DeniedAsync( "Sam makes Nina a sales assistant", () => StaffAsync( "Sam", s => s.AssignDepartmentRoleAsync( "SAL", "Nina", DemoRoles.DepartmentAssistant ) ) );
 await Expect.AllowedAsync( "Mia makes Nina a sales assistant", () => StaffAsync( "Mia", s => s.AssignDepartmentRoleAsync( "SAL", "Nina", DemoRoles.DepartmentAssistant ) ) );
 await Expect.DeniedAsync( "Mia makes Nina an engineering assistant", () => StaffAsync( "Mia", s => s.AssignDepartmentRoleAsync( "ENG", "Nina", DemoRoles.DepartmentAssistant ) ) );
+await Expect.DeniedAsync( "Mia makes herself an accountant of Sales", () => StaffAsync( "Mia", s => s.AssignDepartmentRoleAsync( "SAL", "Mia", DemoRoles.Accountant ) ) );
+await Expect.DeniedAsync( "Alice makes herself an accountant", () => StaffAsync( "Alice", s => s.AssignCompanyRoleAsync( "Alice", DemoRoles.Accountant ) ) );
 await Expect.AllowedAsync( "Nina reads the sales invoice", () => InvoicesAsync( "Nina", async s => _ = (await s.GetAsync( "SAL-0001" )).Total ) );
 await Expect.AllowedAsync( "Alice revokes Nina's role", () => StaffAsync( "Alice", s => s.RevokeDepartmentRoleAsync( "SAL", "Nina", DemoRoles.DepartmentAssistant ) ) );
 await Expect.DeniedAsync( "Nina reads the sales invoice", () => InvoicesAsync( "Nina", async s => _ = (await s.GetAsync( "SAL-0001" )).Total ) );

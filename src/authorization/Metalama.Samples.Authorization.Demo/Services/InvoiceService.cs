@@ -37,6 +37,21 @@ public sealed class InvoiceService( InvoicingDbContext db, IInvoiceSender sender
         await db.SaveChangesAsync( cancellationToken );
     }
 
+    public async Task ChangeCustomerAsync( string number, string customerName, CancellationToken cancellationToken = default )
+    {
+        var invoice = await this.GetAsync( number, cancellationToken );
+        var customer = await db.Customers.SingleAsync( c => c.Name == customerName, cancellationToken );
+        invoice.ChangeCustomer( customer );
+        await db.SaveChangesAsync( cancellationToken );
+    }
+
+    public async Task ChangeOwnerAsync( string number, string userName, CancellationToken cancellationToken = default )
+    {
+        var invoice = await this.GetAsync( number, cancellationToken );
+        invoice.Owner = await db.Users.SingleAsync( u => u.Name == userName, cancellationToken );
+        await db.SaveChangesAsync( cancellationToken );
+    }
+
     public async Task ApproveAsync( string number, CancellationToken cancellationToken = default )
     {
         var invoice = await this.GetAsync( number, cancellationToken );

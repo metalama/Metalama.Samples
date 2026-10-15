@@ -1,7 +1,6 @@
 using Metalama.Framework.Advising;
 using Metalama.Framework.Aspects;
 using Metalama.Framework.Code;
-using Metalama.Framework.Diagnostics;
 using Metalama.Framework.Eligibility;
 
 namespace Metalama.Samples.Authorization;
@@ -21,11 +20,6 @@ namespace Metalama.Samples.Authorization;
 [AttributeUsage( AttributeTargets.Method | AttributeTargets.Property | AttributeTargets.Field | AttributeTargets.Parameter )]
 public sealed class RequiresPermissionAttribute : Aspect, IAspect<IMethod>, IAspect<IFieldOrProperty>, IAspect<IParameter>
 {
-    private static readonly DiagnosticDefinition<IMethod> _noPermissionError = new(
-        "AUTH001",
-        Severity.Error,
-        "[RequiresPermission] on '{0}' does not name a permission and AuthorizationOptions.DefaultExecutePermission is not set." );
-
     private readonly string? _permission;
     private readonly string? _writePermission;
 
@@ -79,15 +73,7 @@ public sealed class RequiresPermissionAttribute : Aspect, IAspect<IMethod>, IAsp
     public void BuildAspect( IAspectBuilder<IMethod> builder )
     {
         var options = builder.Target.Enhancements().GetOptions<AuthorizationOptions>();
-        var permission = this._permission ?? options.DefaultExecutePermission;
-
-        if ( permission == null )
-        {
-            builder.Diagnostics.Report( _noPermissionError.WithArguments( builder.Target ) );
-            builder.SkipAspect();
-
-            return;
-        }
+        var permission = this._permission ?? options.DefaultExecutePermission ?? PermissionNames.Write;
 
         builder.Override(
             nameof(this.OverrideMethod),
@@ -134,7 +120,24 @@ public sealed class RequiresPermissionAttribute : Aspect, IAspect<IMethod>, IAsp
     }
 
     private static string GetMemberName( IMember member )
-        => member is IConstructor ? member.DeclaringType.Name : $"{member.DeclaringType.Name}.{member.Name}";
+    {
+        if ( member is IConstructor )
+        {
+            return member.DeclaringType.Name;
+        }
+
+        // The name of an explicit interface implementation includes the namespace of the interface: keep only the
+        // interface name, for instance Document.IArchivable.Archive.
+        var name = member.Name;
+
+        if ( member.IsExplicitInterfaceImplementation )
+        {
+            var lastDot = name.LastIndexOf( '.' );
+            name = name.Substring( name.LastIndexOf( '.', lastDot - 1 ) + 1 );
+        }
+
+        return $"{member.DeclaringType.Name}.{name}";
+    }
 
     [Template]
     private dynamic? OverrideMethod( [CompileTime] string permission, [CompileTime] string member )

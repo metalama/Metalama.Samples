@@ -6,7 +6,7 @@ namespace Metalama.Samples.Authorization.UnitTests;
 public class SecurityContextTests
 {
     private static readonly RoleBasedAuthorizationPolicy _everyoneMayRead =
-        new RoleBasedAuthorizationPolicy().Allow<Folder>( PermissionNames.Read, Role.Everyone );
+        new RoleBasedAuthorizationPolicyBuilder().Allow<Folder>( PermissionNames.Read, Role.Everyone ).Build();
 
     [Fact]
     public void WithoutContext_SecuredAccessFails()

@@ -6,12 +6,13 @@ namespace Metalama.Samples.Authorization.UnitTests;
 public class AccessGuardTests
 {
     private static readonly RoleBasedAuthorizationPolicy _everyoneMayRead =
-        new RoleBasedAuthorizationPolicy().Allow<Folder>( PermissionNames.Read, Role.Everyone );
+        new RoleBasedAuthorizationPolicyBuilder().Allow<Folder>( PermissionNames.Read, Role.Everyone ).Build();
 
     private readonly TestUser _alice = new( "alice" );
     private readonly RecordingAuditor _auditor = new();
 
-    private IDisposable SignIn() => SecurityContext.Use( new UserSecurityContext( this._alice, _everyoneMayRead, this._auditor ) );
+    private IDisposable SignIn( IAuthorizationPolicy? policy = null )
+        => SecurityContext.Use( new UserSecurityContext( this._alice, policy ?? _everyoneMayRead, this._auditor ) );
 
     [Fact]
     public void Denial_IsAuditedOnce_WithFullDetails()
@@ -24,16 +25,12 @@ public class AccessGuardTests
 
             var audited = Assert.Single( this._auditor.Denials );
             Assert.Same( thrown, audited );
-            Assert.Equal( this._alice, audited.Subject );
-            Assert.Equal( PermissionNames.Write, audited.Permission.Name );
-            Assert.Same( folder, audited.Securable );
-            Assert.Equal( "Folder.Title", audited.Member );
-            Assert.Equal( AccessKind.Write, audited.AccessKind );
+            Assert.Equal( new AccessRecord( this._alice, PermissionNames.Write, "Folder", "Folder.Title", AccessKind.Write ), audited.Record );
         }
     }
 
     [Fact]
-    public void GrantedAccess_IsNotAudited()
+    public void GrantedAccess_IsNotAudited_UnlessTheAuditorSelectsThePermission()
     {
         var folder = new Folder();
 
@@ -43,46 +40,94 @@ public class AccessGuardTests
         }
 
         Assert.Empty( this._auditor.Denials );
+        Assert.Empty( this._auditor.Grants );
+
+        this._auditor.AuditedGrants.Add( PermissionNames.Read );
+
+        using ( this.SignIn() )
+        {
+            _ = folder.Title;
+        }
+
+        Assert.Equal( new AccessRecord( this._alice, PermissionNames.Read, "Folder", "Folder.Title", AccessKind.Read ), Assert.Single( this._auditor.Grants ) );
     }
 
     [Fact]
-    public void Message_DescribesTheDenial()
+    public void Message_NamesTheObjectByItsLabelOnly()
     {
+        var folder = new LabeledFolder { Name = "Secret plans" };
+
         using ( this.SignIn() )
         {
-            var exception = Assert.Throws<AccessDeniedException>( () => new Folder().Title = "Inbox" );
+            var exception = Assert.Throws<AccessDeniedException>( () => folder.Title = "Inbox" );
 
-            Assert.Equal( "Cannot write Folder.Title: 'alice' does not have the Write permission on 'folder'.", exception.Message );
+            Assert.Equal( "Cannot write Folder.Title: 'alice' does not have the Write permission on Folder #7.", exception.Message );
+            Assert.DoesNotContain( "Secret", exception.Message, StringComparison.Ordinal );
         }
     }
 
     [Fact]
-    public void Auditor_RunsInSystemScope()
+    public void Exception_DoesNotReferenceTheSecurableObject()
+    {
+        // A logger that serializes the exception must not be able to reach the object and its secured members.
+        var properties = typeof(AccessDeniedException).GetProperties().Concat( typeof(AccessRecord).GetProperties() );
+
+        Assert.DoesNotContain( properties, p => p.PropertyType == typeof(object) || typeof(IRoleBasedSecurable).IsAssignableFrom( p.PropertyType ) );
+    }
+
+    [Fact]
+    public void Auditor_RunsOutsideOfTheSystemScope()
     {
         var auditor = new ProbeAuditor();
-        var context = new UserSecurityContext( this._alice, new RoleBasedAuthorizationPolicy(), auditor );
+        var context = new UserSecurityContext( this._alice, new RoleBasedAuthorizationPolicyBuilder().Build(), auditor );
 
         using ( SecurityContext.Use( context ) )
         {
             Assert.Throws<AccessDeniedException>( () => new Folder().Title );
         }
 
-        Assert.True( auditor.WasSystem );
+        Assert.True( auditor.WasCalled );
+        Assert.False( auditor.WasSystem );
+    }
+
+    [Fact]
+    public void Deny_ThrowsAndAudits_WithTheReason()
+    {
+        using ( this.SignIn() )
+        {
+            var exception = Assert.Throws<AccessDeniedException>(
+                () => AccessGuard.Deny( new Folder(), PermissionNames.ManageRoles, "Folder.Share", "sharing is disabled" ) );
+
+            Assert.Equal( "Cannot execute Folder.Share: sharing is disabled.", exception.Message );
+            Assert.Same( exception, Assert.Single( this._auditor.Denials ) );
+        }
     }
 
     private sealed class RecordingAuditor : IAccessAuditor
     {
-        private readonly List<AccessDeniedException> _denials = [];
+        public List<AccessDeniedException> Denials { get; } = [];
 
-        public IReadOnlyList<AccessDeniedException> Denials => this._denials;
+        public List<AccessRecord> Grants { get; } = [];
 
-        public void OnAccessDenied( AccessDeniedException exception ) => this._denials.Add( exception );
+        public HashSet<string> AuditedGrants { get; } = [];
+
+        public void OnAccessDenied( AccessDeniedException exception ) => this.Denials.Add( exception );
+
+        public bool AuditsGrantsOf( Permission permission ) => this.AuditedGrants.Contains( permission.Name );
+
+        public void OnAccessGranted( AccessRecord record ) => this.Grants.Add( record );
     }
 
     private sealed class ProbeAuditor : IAccessAuditor
     {
+        public bool WasCalled { get; private set; }
+
         public bool WasSystem { get; private set; }
 
-        public void OnAccessDenied( AccessDeniedException exception ) => this.WasSystem = SecurityContext.IsSystem;
+        public void OnAccessDenied( AccessDeniedException exception )
+        {
+            this.WasCalled = true;
+            this.WasSystem = SecurityContext.IsSystem;
+        }
     }
 }

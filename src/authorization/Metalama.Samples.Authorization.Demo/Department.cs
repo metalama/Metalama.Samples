@@ -16,7 +16,8 @@ public sealed class Department( Company company, string code, string name ) : En
 
     public string Code { get; } = code;
 
-    public string Name { get; set; } = name;
+    // Init-only: the application cannot rename a department, whatever the rules of the policy.
+    public string Name { get; init; } = name;
 
     /// <summary>
     /// Gets the number of the last invoice created in the department. The member is <c>internal</c>, but the project
@@ -33,7 +34,7 @@ public sealed class Department( Company company, string code, string name ) : En
     [RequiresPermission( DemoPermissions.CreateInvoice )]
     public Invoice CreateInvoice( [RequiresPermission( PermissionNames.Read )] Customer customer )
     {
-        var creator = SecurityContext.Current?.Subject;
+        var creator = SecurityContext.Current?.Subject as User;
 
         // The permission has been checked: build the object in a trusted scope,
         // where setting the owner does not require the ChangeOwnership permission.
@@ -41,7 +42,7 @@ public sealed class Department( Company company, string code, string name ) : En
         {
             this.LastInvoiceNumber++;
 
-            return new Invoice( this, customer, $"{this.Code}-{this.LastInvoiceNumber:0000}" ) { Owner = creator };
+            return new Invoice( this, customer, $"{this.Code}-{this.LastInvoiceNumber:0000}", creator ) { Owner = creator };
         }
     }
 

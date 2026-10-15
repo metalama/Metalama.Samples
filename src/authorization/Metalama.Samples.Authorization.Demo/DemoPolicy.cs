@@ -14,17 +14,19 @@ namespace Metalama.Samples.Authorization.Demo;
 public static class DemoPolicy
 {
     public static RoleBasedAuthorizationPolicy Create()
-        => new RoleBasedAuthorizationPolicy()
+        => new RoleBasedAuthorizationPolicyBuilder()
 
             // The company directory is public.
             .Allow<Company>( Read, Role.Everyone )
             .Allow<Department>( Read, Role.Everyone )
 
-            // The owner of an invoice (usually the person who created it) can read and edit it,
-            // but cannot approve it: the four-eyes principle.
+            // The owner of an invoice can read and edit it. Neither the owner nor the creator can approve it:
+            // the four-eyes principle. The creator rule matters because a manager can give an invoice to
+            // another owner, but cannot change who created it.
             .Allow<Invoice>( Read, Role.Owner )
             .Allow<Invoice>( Write, Role.Owner )
             .Deny<Invoice>( Approve, Role.Owner )
+            .Deny<Invoice>( Approve, Creator )
 
             // Department assistants prepare and send invoices, and maintain customer contact details.
             .Allow<Department>( CreateInvoice, DepartmentAssistant )
@@ -47,6 +49,7 @@ public static class DemoPolicy
             .Allow<Invoice>( ChangeOwnership, DepartmentManager )
             .Allow<Customer>( Write, DepartmentManager )
             .Allow<Customer>( Approve, DepartmentManager )
+            .Allow<Customer>( ChangeOwnership, DepartmentManager )
             .Allow<Customer>( ReadSensitive, DepartmentManager )
             .Allow<Budget>( ReadSensitive, DepartmentManager )
 
@@ -71,5 +74,6 @@ public static class DemoPolicy
 
             // Administrators manage roles but are kept away from sensitive data.
             .Allow<object>( ManageRoles, Administrator )
-            .Deny<object>( ReadSensitive, Administrator );
+            .Deny<object>( ReadSensitive, Administrator )
+            .Build();
 }

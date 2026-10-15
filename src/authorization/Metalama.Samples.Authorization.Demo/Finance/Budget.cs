@@ -26,7 +26,7 @@ public sealed class Budget( Department department, int fiscalYear, decimal amoun
 
     protected override IRoleBasedSecurable? SecurityParent => this.Department;
 
-    // No attribute: the project fabric makes Write the default permission of methods.
+    // No attribute: Write is the default permission of methods.
     public void Adjust( decimal delta ) => this._amount += delta;
 
     public void RecordSpending( decimal amount )

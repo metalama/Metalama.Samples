@@ -1,12 +1,12 @@
 namespace Metalama.Samples.Authorization.Tests.Options_DefaultExecute;
 
 [ApplyDefaultPermissions]
-[AuthorizationOptions( DefaultExecutePermission = "Write" )]
+[AuthorizationOptions( DefaultExecutePermission = "Edit" )]
 public class Document
 {
     private readonly List<string> _lines = [];
 
-    // Methods are secured by default.
+    // Methods require the configured default permission instead of Write.
     public void AddLine( string line ) => this._lines.Add( line );
 
     // An explicit permission wins.

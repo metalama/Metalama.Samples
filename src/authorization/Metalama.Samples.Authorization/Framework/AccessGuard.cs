@@ -22,34 +22,67 @@ public static class AccessGuard
             return;
         }
 
-        // Fail closed: a missing context is a configuration error, not a reason to skip security.
-        var context = SecurityContext.Current
-                      ?? throw new InvalidOperationException(
-                          $"Cannot access {member}: there is no current security context. " +
-                          "Set SecurityContext.Current or use SecurityContext.RunAsSystem()." );
+        var context = GetContext( member );
 
-        AccessDeniedException? exception = null;
+        bool isGranted;
+        AccessRecord record;
 
-        // The policy and the exception message read secured members, for instance the owner of the object.
+        // The policy and the label read secured members, for instance the owner of the object.
         // Running them in a system scope avoids recursive checks.
         using ( SecurityContext.RunAsSystem() )
         {
-            if ( !context.Policy.IsGranted( context.Subject, permission, securable ) )
-            {
-                exception = new AccessDeniedException(
-                    context.Subject,
-                    permission,
-                    securable,
-                    member,
-                    accessKind );
+            isGranted = context.Policy.IsGranted( context.Subject, permission, securable );
+            record = new AccessRecord( context.Subject, permission, SecurityLabel.Of( securable ), member, accessKind );
+        }
 
-                context.Auditor?.OnAccessDenied( exception );
+        // The auditor runs with the permissions of the subject, outside of the system scope.
+        if ( isGranted )
+        {
+            if ( context.Auditor?.AuditsGrantsOf( record.Permission ) == true )
+            {
+                context.Auditor.OnAccessGranted( record );
             }
         }
-
-        if ( exception != null )
+        else
         {
-            throw exception;
+            Fail( context, record, null );
         }
+    }
+
+    /// <summary>
+    /// Denies an operation for a reason that is not a missing permission, for instance because a user tries to
+    /// assign a role to themself. The denial is audited like any other.
+    /// </summary>
+    /// <param name="securable">The object being accessed.</param>
+    /// <param name="permission">The permission of the operation.</param>
+    /// <param name="member">The name of the member being accessed.</param>
+    /// <param name="reason">The reason of the denial, included in the exception message.</param>
+    public static void Deny( object securable, string permission, string member, string reason )
+    {
+        var context = GetContext( member );
+
+        AccessRecord record;
+
+        using ( SecurityContext.RunAsSystem() )
+        {
+            record = new AccessRecord( context.Subject, permission, SecurityLabel.Of( securable ), member, AccessKind.Execute );
+        }
+
+        Fail( context, record, reason );
+    }
+
+    private static ISecurityContext GetContext( string member )
+        // Fail closed: a missing context is a configuration error, not a reason to skip security.
+        => SecurityContext.Current
+           ?? throw new InvalidOperationException(
+               $"Cannot access {member}: there is no current security context. " +
+               "Use SecurityContext.Use() or SecurityContext.RunAsSystem()." );
+
+    private static void Fail( ISecurityContext context, AccessRecord record, string? reason )
+    {
+        var exception = new AccessDeniedException( record, reason );
+        context.Auditor?.OnAccessDenied( exception );
+
+        throw exception;
     }
 }

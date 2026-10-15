@@ -32,7 +32,7 @@ public sealed class Quote : Entity
       _internalNote = value;
     }
   }
-  // Requires Write because the project fabric sets DefaultExecutePermission.
+  // Requires Write, the default permission of methods.
   public void AddItem(string description)
   {
     AccessGuard.Demand(this, "Write", "Quote.AddItem", AccessKind.Execute);

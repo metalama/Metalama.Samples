@@ -17,7 +17,7 @@ public sealed class Forecast : Entity
       _amount = value;
     }
   }
-  // Requires Write, from the project fabric.
+  // Requires Write, the default permission of methods.
   public void Revise(decimal amount)
   {
     AccessGuard.Demand(this, "Write", "Forecast.Revise", AccessKind.Execute);

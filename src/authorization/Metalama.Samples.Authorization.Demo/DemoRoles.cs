@@ -32,4 +32,10 @@ public static class DemoRoles
     /// Manages role assignments everywhere, but is denied access to sensitive business data.
     /// </summary>
     public static Role Administrator { get; } = new( nameof(Administrator) );
+
+    /// <summary>
+    /// A computed role: the person who created an invoice has it on this invoice. Unlike the owner,
+    /// the creator never changes.
+    /// </summary>
+    public static Role Creator { get; } = Role.Computed( nameof(Creator) );
 }

@@ -22,7 +22,7 @@ public sealed class Quote : Entity
     // Secured because the project fabric sets SecureNonPublicMembers.
     internal string? InternalNote { get; set; }
 
-    // Requires Write because the project fabric sets DefaultExecutePermission.
+    // Requires Write, the default permission of methods.
     public void AddItem( string description ) { }
 
     [RequiresPermission( DemoPermissions.Approve )]

@@ -6,6 +6,7 @@
 
     <ItemGroup>
         <PackageReference Include="Metalama.Framework"/>
+        <PackageReference Include="Metalama.Extensions.Validation"/>
     </ItemGroup>
 
 </Project>

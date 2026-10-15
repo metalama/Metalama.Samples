@@ -23,7 +23,6 @@ public static class PermissionMatrix
         Op( "DIR-1: Read the company name", org => _ = org.Contoso.Name, _everyone ),
         Op( "DIR-1: Read a department name", org => _ = org.Sales.Name, _everyone ),
         Op( "DIR-1: Read the role assignments of a department", org => _ = org.Sales.RoleAssignments, _everyone ),
-        Op( "DIR-2: Rename a department", org => org.Sales.Name = "Sales and Partnerships" ),
 
         // Reading invoices.
         Op( "INV-1: Read the number of an invoice", org => _ = org.SalesInvoice.Number, _everyone ),
@@ -41,11 +40,17 @@ public static class PermissionMatrix
         Op( "INV-4: Remove a line from a sales invoice", org => org.SalesInvoice.RemoveLine( 0 ), Sam, Mia ),
         Op( "INV-4: Change the due date of a sales invoice", org => org.SalesInvoice.DueDate = new DateOnly( 2026, 12, 31 ), Sam, Mia ),
         Op( "INV-4: Add a line to an engineering invoice", org => org.EngineeringInvoice.AddLine( "Testing", 1, 500 ), Tom, Erin ),
+        Op( "INV-4: Bill a sales invoice to a customer of the department", org => org.SalesInvoice.ChangeCustomer( org.Fabrikam ), Sam, Mia ),
+        Op( "INV-4: Bill a sales invoice to a customer of another department", org => org.SalesInvoice.ChangeCustomer( org.Northwind ) ),
 
         // Approval: four-eyes principle and segregation of duties.
         Op( "INV-5: Approve a sales invoice", org => org.SalesInvoice.Approve(), Mia ),
         Op( "INV-5: Approve an engineering invoice", org => org.EngineeringInvoice.Approve(), Erin ),
         Op( "INV-5: Approve the marketing invoice, owned by its manager", org => org.MarketingInvoice.Approve() ),
+        Op(
+            "INV-5: Approve the marketing invoice after its creator gave it to another owner",
+            org => org.MarketingInvoice.Approve(),
+            arrange: org => org.MarketingInvoice.Owner = org.Vera ),
 
         // Sending and collecting.
         Op(
@@ -83,6 +88,8 @@ public static class PermissionMatrix
         Op( "CUS-2: Change a customer tax ID", org => org.Fabrikam.TaxId = "CZ87654321", Sam, Mia ),
         Op( "CUS-4: Change a customer credit limit", org => org.Fabrikam.CreditLimit = 80_000, Mia ),
         Op( "CUS-4: Change customer payment terms", org => org.Fabrikam.PaymentTermDays = 60, Mia ),
+        Op( "CUS-5: Move a customer to Marketing", org => org.Fabrikam.MoveTo( org.Marketing ), Mia ),
+        Op( "CUS-5: Move a customer to Engineering", org => org.Fabrikam.MoveTo( org.Engineering ) ),
 
         // Budgets.
         Op( "BUD-1: Read the sales budget", org => _ = org.SalesBudget.Remaining, Mia, Ada, Otto, Grace ),
@@ -98,10 +105,14 @@ public static class PermissionMatrix
             org => new StaffService( org.Db ).CreateUserAsync( "Nina", "Sales assistant" ),
             Alice ),
         Op( "ACC-1: Assign a company-wide role", org => org.Contoso.AssignRole( new User( "Nina" ), DemoRoles.Accountant ), Alice ),
-        Op( "ACC-2: Revoke a role in Engineering", org => org.Engineering.RevokeRole( org.Tom, DemoRoles.DepartmentAssistant ), Alice, Erin )
+        Op( "ACC-2: Revoke a role in Engineering", org => org.Engineering.RevokeRole( org.Tom, DemoRoles.DepartmentAssistant ), Alice, Erin ),
+        Op( "ACC-4: Assign oneself a role in Sales", org => org.Sales.AssignRole( CurrentUser(), DemoRoles.Accountant ) ),
+        Op( "ACC-4: Assign oneself a company-wide role", org => org.Contoso.AssignRole( CurrentUser(), DemoRoles.Accountant ) )
     ];
 
     public static Operation Get( string name ) => Operations.Single( o => o.Name == name );
+
+    private static ISubject CurrentUser() => SecurityContext.Current!.Subject;
 
     private static void Approve( DemoOrganization org ) => org.SalesInvoice.Approve();
 
@@ -112,6 +123,23 @@ public static class PermissionMatrix
             org =>
             {
                 act( org );
+
+                return Task.CompletedTask;
+            } );
+
+    private static Operation Op( string name, Action<DemoOrganization> act, Action<DemoOrganization> arrange, params Actor[] allowed )
+        => new(
+            name,
+            allowed.ToHashSet(),
+            org =>
+            {
+                act( org );
+
+                return Task.CompletedTask;
+            },
+            org =>
+            {
+                arrange( org );
 
                 return Task.CompletedTask;
             } );

@@ -26,6 +26,14 @@ public sealed class CustomerService( InvoicingDbContext db )
         await db.SaveChangesAsync( cancellationToken );
     }
 
+    public async Task MoveToDepartmentAsync( string name, string departmentCode, CancellationToken cancellationToken = default )
+    {
+        var customer = await this.GetAsync( name, cancellationToken );
+        var department = await db.Departments.SingleAsync( d => d.Code == departmentCode, cancellationToken );
+        customer.MoveTo( department );
+        await db.SaveChangesAsync( cancellationToken );
+    }
+
     public async Task ChangeCreditLimitAsync( string name, decimal creditLimit, CancellationToken cancellationToken = default )
     {
         var customer = await this.GetAsync( name, cancellationToken );

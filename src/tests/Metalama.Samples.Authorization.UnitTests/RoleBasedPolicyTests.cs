@@ -36,7 +36,7 @@ public class RoleBasedPolicyTests
     [Fact]
     public void NoMatchingRule_IsDenied()
     {
-        var policy = new RoleBasedAuthorizationPolicy().Allow<Folder>( Write, TestRoles.Editor );
+        var policy = new RoleBasedAuthorizationPolicyBuilder().Allow<Folder>( Write, TestRoles.Editor ).Build();
 
         Assert.False( IsGranted( policy, this._alice, Write, this.CreateFolder() ) );
     }
@@ -44,7 +44,7 @@ public class RoleBasedPolicyTests
     [Fact]
     public void AllowRule_GrantsMembersOfTheRole()
     {
-        var policy = new RoleBasedAuthorizationPolicy().Allow<Folder>( Write, TestRoles.Editor );
+        var policy = new RoleBasedAuthorizationPolicyBuilder().Allow<Folder>( Write, TestRoles.Editor ).Build();
         var folder = this.CreateFolder( aliceRole: TestRoles.Editor );
 
         Assert.True( IsGranted( policy, this._alice, Write, folder ) );
@@ -54,7 +54,7 @@ public class RoleBasedPolicyTests
     [Fact]
     public void AllowRule_DoesNotGrantOtherPermissions()
     {
-        var policy = new RoleBasedAuthorizationPolicy().Allow<Folder>( Write, TestRoles.Editor );
+        var policy = new RoleBasedAuthorizationPolicyBuilder().Allow<Folder>( Write, TestRoles.Editor ).Build();
 
         Assert.False( IsGranted( policy, this._alice, ManageRoles, this.CreateFolder( aliceRole: TestRoles.Editor ) ) );
     }
@@ -62,15 +62,15 @@ public class RoleBasedPolicyTests
     [Fact]
     public void DenyRule_OverridesAllowRule()
     {
-        var policy = new RoleBasedAuthorizationPolicy()
+        var policy = new RoleBasedAuthorizationPolicyBuilder()
             .Allow<Folder>( Write, TestRoles.Editor )
-            .Deny<object>( Write, TestRoles.Reviewer );
+            .Deny<object>( Write, TestRoles.Auditor ).Build();
 
         var folder = this.CreateFolder( aliceRole: TestRoles.Editor );
 
         using ( SecurityContext.RunAsSystem() )
         {
-            folder.AssignRole( this._alice, TestRoles.Reviewer );
+            folder.AssignRole( this._alice, TestRoles.Auditor );
         }
 
         Assert.False( IsGranted( policy, this._alice, Write, folder ) );
@@ -79,7 +79,7 @@ public class RoleBasedPolicyTests
     [Fact]
     public void RuleOnBaseType_AppliesToDerivedType()
     {
-        var policy = new RoleBasedAuthorizationPolicy().Allow<object>( Read, Role.Everyone );
+        var policy = new RoleBasedAuthorizationPolicyBuilder().Allow<object>( Read, Role.Everyone ).Build();
 
         Assert.True( IsGranted( policy, this._alice, Read, new SpecialFolder() ) );
     }
@@ -87,7 +87,7 @@ public class RoleBasedPolicyTests
     [Fact]
     public void RuleOnDerivedType_DoesNotApplyToBaseType()
     {
-        var policy = new RoleBasedAuthorizationPolicy().Allow<SpecialFolder>( Read, Role.Everyone );
+        var policy = new RoleBasedAuthorizationPolicyBuilder().Allow<SpecialFolder>( Read, Role.Everyone ).Build();
 
         Assert.False( IsGranted( policy, this._alice, Read, new Folder() ) );
         Assert.True( IsGranted( policy, this._alice, Read, new SpecialFolder() ) );
@@ -96,7 +96,7 @@ public class RoleBasedPolicyTests
     [Fact]
     public void Everyone_IsImplicit()
     {
-        var policy = new RoleBasedAuthorizationPolicy().Allow<Folder>( Read, Role.Everyone );
+        var policy = new RoleBasedAuthorizationPolicyBuilder().Allow<Folder>( Read, Role.Everyone ).Build();
 
         Assert.True( IsGranted( policy, new TestUser( "stranger" ), Read, new Folder() ) );
     }
@@ -104,7 +104,7 @@ public class RoleBasedPolicyTests
     [Fact]
     public void Owner_IsComputedFromTheObject()
     {
-        var policy = new RoleBasedAuthorizationPolicy().Allow<Folder>( Write, Role.Owner );
+        var policy = new RoleBasedAuthorizationPolicyBuilder().Allow<Folder>( Write, Role.Owner ).Build();
         var folder = this.CreateFolder();
 
         using ( SecurityContext.RunAsSystem() )
@@ -119,7 +119,7 @@ public class RoleBasedPolicyTests
     [Fact]
     public void Owner_IsNotInheritedByChildren()
     {
-        var policy = new RoleBasedAuthorizationPolicy().Allow<Folder>( Write, Role.Owner );
+        var policy = new RoleBasedAuthorizationPolicyBuilder().Allow<Folder>( Write, Role.Owner ).Build();
         var parent = this.CreateFolder();
 
         using ( SecurityContext.RunAsSystem() )
@@ -133,7 +133,7 @@ public class RoleBasedPolicyTests
     [Fact]
     public void AssignedRole_IsInheritedThroughSecurityParent()
     {
-        var policy = new RoleBasedAuthorizationPolicy().Allow<Folder>( Write, TestRoles.Editor );
+        var policy = new RoleBasedAuthorizationPolicyBuilder().Allow<Folder>( Write, TestRoles.Editor ).Build();
         var root = this.CreateFolder( aliceRole: TestRoles.Editor );
         var grandChild = this.CreateFolder( this.CreateFolder( root ) );
 
@@ -143,7 +143,7 @@ public class RoleBasedPolicyTests
     [Fact]
     public void NonSecurableObject_IsDenied()
     {
-        var policy = new RoleBasedAuthorizationPolicy().Allow<object>( Read, Role.Everyone );
+        var policy = new RoleBasedAuthorizationPolicyBuilder().Allow<object>( Read, Role.Everyone ).Build();
 
         Assert.False( IsGranted( policy, this._alice, Read, new NotSecurable() ) );
     }
@@ -151,7 +151,7 @@ public class RoleBasedPolicyTests
     [Fact]
     public void RevokedRole_NoLongerGrants()
     {
-        var policy = new RoleBasedAuthorizationPolicy().Allow<Folder>( Write, TestRoles.Editor );
+        var policy = new RoleBasedAuthorizationPolicyBuilder().Allow<Folder>( Write, TestRoles.Editor ).Build();
         var folder = this.CreateFolder( aliceRole: TestRoles.Editor );
 
         using ( SecurityContext.RunAsSystem() )
@@ -164,7 +164,7 @@ public class RoleBasedPolicyTests
     }
 
     [Fact]
-    public void BuiltInRoles_CannotBeAssigned()
+    public void ComputedRoles_CannotBeAssigned()
     {
         var folder = this.CreateFolder();
 
@@ -178,7 +178,7 @@ public class RoleBasedPolicyTests
     [Fact]
     public void AssigningRoles_RequiresManageRoles()
     {
-        var policy = new RoleBasedAuthorizationPolicy().Allow<Folder>( ManageRoles, TestRoles.Editor );
+        var policy = new RoleBasedAuthorizationPolicyBuilder().Allow<Folder>( ManageRoles, TestRoles.Editor ).Build();
         var folder = this.CreateFolder( aliceRole: TestRoles.Editor );
 
         using ( SecurityContext.Use( new UserSecurityContext( this._bob, policy ) ) )
@@ -188,7 +188,68 @@ public class RoleBasedPolicyTests
 
         using ( SecurityContext.Use( new UserSecurityContext( this._alice, policy ) ) )
         {
-            folder.AssignRole( this._bob, TestRoles.Reviewer );
+            folder.AssignRole( this._bob, TestRoles.Auditor );
         }
+    }
+
+    [Fact]
+    public void ApplicationComputedRole_IsResolvedByTheObject_AndCannotBeAssigned()
+    {
+        var policy = new RoleBasedAuthorizationPolicyBuilder().Deny<Folder>( Write, TestRoles.Reviewer ).Allow<Folder>( Write, Role.Everyone ).Build();
+        var folder = new ReviewedFolder { Reviewer = this._alice };
+
+        Assert.False( IsGranted( policy, this._alice, Write, folder ) );
+        Assert.True( IsGranted( policy, this._bob, Write, folder ) );
+
+        // A computed role of a parent is not inherited.
+        Assert.True( IsGranted( policy, this._alice, Write, this.CreateFolder( folder ) ) );
+
+        using ( SecurityContext.RunAsSystem() )
+        {
+            Assert.Throws<ArgumentException>( () => folder.AssignRole( this._bob, TestRoles.Reviewer ) );
+        }
+    }
+
+    [Fact]
+    public void AssignedRole_IsInheritedFromAParentThatOnlyImplementsTheInterface()
+    {
+        var policy = new RoleBasedAuthorizationPolicyBuilder().Allow<Folder>( Write, TestRoles.Editor ).Build();
+        var folder = this.CreateFolder( new Folder { Parent = new ExternalSecurable( this._alice ) } );
+
+        Assert.True( IsGranted( policy, this._alice, Write, folder ) );
+        Assert.False( IsGranted( policy, this._bob, Write, folder ) );
+    }
+
+    [Fact]
+    public void AssigningARoleToOneself_IsDenied()
+    {
+        var policy = new RoleBasedAuthorizationPolicyBuilder().Allow<Folder>( ManageRoles, TestRoles.Editor ).Build();
+        var folder = this.CreateFolder( aliceRole: TestRoles.Editor );
+
+        using ( SecurityContext.Use( new UserSecurityContext( this._alice, policy ) ) )
+        {
+            var exception = Assert.Throws<AccessDeniedException>( () => folder.AssignRole( this._alice, TestRoles.Auditor ) );
+
+            Assert.Contains( "cannot assign a role to themself", exception.Message, StringComparison.Ordinal );
+
+            // Assigning the same role to someone else is allowed.
+            folder.AssignRole( this._bob, TestRoles.Auditor );
+        }
+    }
+
+    [Fact]
+    public void RuleOnAnInterface_IsRejected()
+        => Assert.Throws<ArgumentException>( () => new RoleBasedAuthorizationPolicyBuilder().Allow<IFolder>( Read, Role.Everyone ) );
+
+    [Fact]
+    public void Builder_ChangesAfterBuild_DoNotAffectThePolicy()
+    {
+        var builder = new RoleBasedAuthorizationPolicyBuilder();
+        var policy = builder.Build();
+
+        builder.Allow<Folder>( Read, Role.Everyone );
+
+        Assert.False( IsGranted( policy, this._alice, Read, new Folder() ) );
+        Assert.True( IsGranted( builder.Build(), this._alice, Read, new Folder() ) );
     }
 }

@@ -7,7 +7,7 @@ namespace Metalama.Samples.Authorization;
 /// </summary>
 [AttributeUsage(
     AttributeTargets.Assembly | AttributeTargets.Class | AttributeTargets.Struct |
-    AttributeTargets.Property | AttributeTargets.Field | AttributeTargets.Method )]
+    AttributeTargets.Property | AttributeTargets.Field | AttributeTargets.Method | AttributeTargets.Event )]
 public sealed class AuthorizationOptionsAttribute : Attribute, IHierarchicalOptionsProvider
 {
     // Custom attributes cannot have properties of a nullable value type,

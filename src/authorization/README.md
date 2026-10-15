@@ -42,7 +42,7 @@ The second layer is one implementation of `IAuthorizationPolicy`: the classic ro
 * Each object has a security parent and inherits the role assignments of its ancestors. For instance, an invoice inherits the role assignments of its department, and the department inherits those of the company.
 * Rules allow or deny a permission to a role on a type of object, for instance "department managers are allowed to approve invoices". A rule on a base type also applies to derived types.
 * A permission is granted when at least one rule allows it and no rule denies it.
-* Two roles are built in and never assigned. Every subject has `Everyone`. The `Owner` of an object has `Owner` on this object only.
+* Computed roles are never assigned: the object computes them from its own data. Two are built in: every subject has `Everyone`, and the `Owner` of an object has `Owner` on this object only. Applications can add their own, such as the creator of an invoice.
 
 ### Replacing the role-based model
 
@@ -85,7 +85,7 @@ A few details are worth noting:
 * A private setter is not checked. The class changes its own state through it, typically from a method that is itself secured.
 * The aspect is `[Inheritable]`. An override of a secured virtual member gets the same check, so a derived class cannot skip it by not calling the base implementation. On an abstract member, the aspect secures all the overrides.
 * The eligibility rules reject static members, `out` parameters and parameters of a value type. Static members have no instance on which to check a permission. Abstract members are rejected except through inheritance, with `builder.ExceptForInheritance().MustNotBeAbstract()`.
-* When the attribute does not name a permission, the defaults of `AuthorizationOptions` apply. When a method has no permission and no default is configured, the aspect reports the error `AUTH001`.
+* When the attribute does not name a permission, the defaults of `AuthorizationOptions` apply. A method requires `Write` by default.
 
 ### ApplyDefaultPermissions
 
@@ -95,7 +95,33 @@ The `[ApplyDefaultPermissions]` aspect adds `[RequiresPermission]` to all member
 
 The aspect adds child aspects with `builder.Outbound.SelectMany(...).AddAspectIfEligible(...)`. A child aspect must be processed after its parent, so the library declares the order with `[assembly: AspectOrder]`.
 
-The aspect never secures private members, static members, members that already have `[RequiresPermission]`, or overrides of `ToString`, `Equals` and `GetHashCode`. Exception messages and collections call these methods.
+The aspect secures by default. Every public field, property and method gets a check, and so does every explicit interface implementation: such a member is private in C#, but any caller reaches it through the interface. A reader who copies the aspect without any configuration therefore gets a secured class, not a class with unsecured methods. A member that must stay unsecured is excluded explicitly, with `[AuthorizationOptions( IsDefaultSecuringEnabled = false )]`, which also documents the decision for a reviewer.
+
+The aspect never secures private members, members that already have `[RequiresPermission]`, or overrides of `ToString`, `Equals` and `GetHashCode`. Loggers and collections call these methods.
+
+### Verifying that every member is secured
+
+Default securing has gaps by construction. The aspects cannot secure a static member, which has no instance on which to check a permission, nor an indexer or an event, which they do not support. A member can also lose its check by mistake, for instance after a change of options. In an authorization framework, such a gap is a security hole that nothing reports: the code compiles, the tests of the other members pass, and the member is open to every user.
+
+For this reason, `[ApplyDefaultPermissions]` also registers a validator. The validator runs after all aspects have been applied (`DeclarationValidationTime.AfterAllAspects`), so it sees the final code: the checks added by default, by explicit attributes and by inheritance. It reports a warning for each member that a caller can reach but that has no check and was not excluded explicitly:
+
+* `AUTH001`: an exposed member has no permission check, for instance an indexer or an event.
+* `AUTH002`: an exposed member is static.
+
+The validator turns the rule "every member of a secured class is secured" from a convention into a build-time verification, at no cost at run time. Each warning names the member and gives the two possible fixes. An explicit exclusion is visible in the code and in a review, while an unintended gap is not.
+
+[!metalama-test ../tests/Metalama.Samples.Authorization.Tests/Validation_UnsecuredMembers.cs]
+
+Two details of the validator come from the way Metalama transforms the code. To secure a field, Metalama turns it into a property, so the validator looks for the aspect on both the field and the property (`IProperty.OriginalField`). An abstract member has no body, so the validator checks its overrides instead.
+
+### Writing a securable class
+
+The aspects check the accesses to the members of a class. They cannot check what the class does with the references that it returns or receives. A securable class therefore follows these rules, which the demo applies:
+
+* A secured getter must not return a mutable reference to the secured state. `Invoice.Lines` returns a read-only wrapper of its list: otherwise, a user with `Read` could cast the result and change the lines without `Write`.
+* A reference to another secured object changes only through a method with a parameter check. A setter can only check the object that it belongs to, not the new value. So `Invoice.Customer` and `Customer.Department` have private setters, and `Invoice.ChangeCustomer` and `Customer.MoveTo` check the permission on the new value.
+* A guarantee that does not depend on the policy is structural. `Company.Name` and `Department.Name` are init-only, so no rule added to the policy later can allow renaming them.
+* A label identifies the object in messages without disclosing its data (see `IHasSecurityLabel` below).
 
 ## Build-time configuration with hierarchical options
 
@@ -105,7 +131,7 @@ The aspects read their defaults from the `AuthorizationOptions` class, which imp
 |---|---|---|
 | `DefaultReadPermission` | `Read` | Permission to read a field or property. |
 | `DefaultWritePermission` | `Write` | Permission to write a field or property. |
-| `DefaultExecutePermission` | none | Permission to execute a method. Without a value, `[ApplyDefaultPermissions]` does not secure methods. |
+| `DefaultExecutePermission` | `Write` | Permission to execute a method. |
 | `SecureNonPublicMembers` | `false` | Whether `[ApplyDefaultPermissions]` also secures `internal` and `protected` members. |
 | `IsDefaultSecuringEnabled` | `true` | Whether `[ApplyDefaultPermissions]` secures the target. Set it to `false` to exclude a namespace, a type or a member. |
 
@@ -113,7 +139,7 @@ The aspects read their defaults from the `AuthorizationOptions` class, which imp
 
 Options can be set at any level, and the nearest level wins. The demo uses all of them:
 
-* A project fabric secures all methods with `Write`, and also secures non-public members:
+* A project fabric also secures non-public members:
 
   [!metalama-file Metalama.Samples.Authorization.Demo/AuthorizationFabric.cs]
 
@@ -140,8 +166,21 @@ The generated code calls `AccessGuard.Demand`:
 
 * There is no check in a system scope, opened with `SecurityContext.RunAsSystem()`. Trusted code uses it, for instance to seed a database or to build an object after its permission has been checked.
 * Without a current context, the access fails. A missing context is a configuration error, not a reason to skip security.
-* The policy runs in a system scope. The policy reads secured members, such as the owner of the object, and these reads must not trigger checks recursively. The exception message is built in the same scope, because it calls `ToString`.
-* On a denial, the auditor receives the exception before it is thrown.
+* The policy runs in a system scope. The policy reads secured members, such as the owner of the object, and these reads must not trigger checks recursively.
+* The auditor runs outside of the system scope. An auditor that reads data or writes to a secured store does it with the permissions of the current subject, not with implicit privileges.
+* `AccessGuard.Deny` refuses an operation for a reason that is not a missing permission, and audits it like any other denial. The role-based layer uses it to refuse that a user assigns a role to themself.
+
+### What the messages and audit records disclose
+
+A denial message is shown to a user who does not have access to the object, and audit records end up in log files. Both must not disclose the data that the check protects. `AccessDeniedException` and `AccessRecord` therefore do not reference the securable object: they contain only its label. A class implements `IHasSecurityLabel` to provide a label made of non-sensitive data, typically its type name and its identifier, such as `Customer #1`. Other objects are labeled with their type name. A message never calls `ToString`, which often returns a name, and a logger that serializes the exception cannot reach the secured members.
+
+### What the auditor records
+
+The auditor receives every denial. It can also select permissions whose grants it records, with `IAccessAuditor.AuditsGrantsOf`. The demo records the grants of `ManageRoles` and `ChangeOwnership`, because these operations change who can do what: an audit trail of denials alone would not show who gave a right to whom.
+
+### Trust boundary
+
+The framework enforces authorization inside a process. It protects against missing checks, not against malicious code: any code of the process can call `SecurityContext.Use` or `SecurityContext.RunAsSystem`. Only trusted infrastructure calls them, such as the authentication middleware or the database seeder. `SecurityContext.Current` has no public setter, so the only way to change it is a scope that restores the previous value. A context or a system scope also applies to the tasks started while it is active, because `AsyncLocal<T>` values flow into them.
 
 `SecurityContext` stores the context and the system scope in `AsyncLocal<T>` fields. They follow `async` code and stay isolated between concurrent requests.
 
@@ -149,11 +188,18 @@ The generated code calls `AccessGuard.Demand`:
 
 ## The role-based policy
 
-`RoleBasedAuthorizationPolicy` stores the rules by type. `IsGranted` walks the type hierarchy of the securable. For each rule that matches the permission and a role of the subject, a `Deny` rule returns `false` immediately, and an `Allow` rule records the grant.
+`RoleBasedAuthorizationPolicy` stores the rules by class. `IsGranted` walks the class hierarchy of the securable. For each rule that matches the permission and a role of the subject, a `Deny` rule returns `false` immediately, and an `Allow` rule records the grant.
+
+A `RoleBasedAuthorizationPolicyBuilder` collects the rules, and its `Build` method creates an immutable policy, which concurrent requests can use without locks. To change the rules, an application builds a new policy and replaces the old instance. The builder rejects a rule on an interface: the policy walks base classes, never interfaces, so such a rule would never match.
 
 [!metalama-file Metalama.Samples.Authorization/RoleBased/RoleBasedAuthorizationPolicy.cs]
 
-`RoleBasedSecurable` resolves roles. `Everyone` matches every subject. `Owner` matches the owner of the object itself, and children do not inherit it. Assigned roles are searched on the object and on its security ancestors.
+`RoleBasedSecurable` resolves roles. There are two kinds of roles:
+
+* An assigned role is stored on an object, and the children of this object inherit it. `HasRole` checks the assignments of the object, then delegates to `HasRole` of the security parent, so any implementation of `IRoleBasedSecurable` can be a parent.
+* A computed role is never assigned: the object computes it from its own data, and children do not inherit it. `Everyone` matches every subject, and `Owner` matches the owner of the object. An application defines more computed roles with `Role.Computed` and resolves them by overriding `HasComputedRole`. The demo defines `Creator`, the person who created an invoice.
+
+Nobody can assign a role to themself. Without this rule, anyone who manages roles could give themself any right.
 
 `RoleBasedSecurable` does not store anything. The `Owner` property is abstract, and derived classes store the role assignments through the abstract `GetRoleAssignments`, `AddRoleAssignment` and `RemoveRoleAssignment` methods. `InMemoryRoleBasedSecurable` stores them in a list. The demo stores them in the database. The `[RequiresPermission]` aspect on the abstract `Owner` property is inherited, so every implementation of `Owner` is secured.
 
@@ -182,15 +228,15 @@ The person who creates an invoice is its owner. A person can hold several positi
 #### Company directory
 
 * `DIR-1`: Every user, even without any position, can see the name of the company, the names of the departments, and who holds which position in each department.
-* `DIR-2`: Nobody can rename a department in the application.
+* `DIR-2`: Nobody can rename the company or a department in the application.
 
 #### Invoices
 
 * `INV-1`: The invoice number is not confidential. Every user can see it.
 * `INV-2`: The content of an invoice is visible to the staff of its department, to its owner, to accountants and to auditors. Nobody else can see it, administrators included.
 * `INV-3`: The staff of a department can create invoices for the department, only for a customer whose record they can see (`CUS-1`). For instance, a person who works in Sales and in Marketing can invoice a Sales customer from Marketing.
-* `INV-4`: Before approval, the owner and the staff of the department can edit the invoice. Accountants cannot edit invoice content.
-* `INV-5`: Only a manager of the department can approve an invoice. Nobody can approve an invoice they created (four-eyes principle). An auditor cannot approve, even as a manager.
+* `INV-4`: Before approval, the owner and the staff of the department can edit the invoice, including the customer that it bills. The new customer must be one whose record they can see. Accountants cannot edit invoice content.
+* `INV-5`: Only a manager of the department can approve an invoice. Nobody can approve an invoice that they created or that they own (four-eyes principle), even after giving the invoice to another owner. An auditor cannot approve, even as a manager.
 * `INV-6`: The staff of the department send the approved invoices to the customer.
 * `INV-7`: Only accountants record payments.
 * `INV-8`: Only accountants cancel (void) invoices.
@@ -203,6 +249,7 @@ The person who creates an invoice is its owner. A person can hold several positi
 * `CUS-2`: The staff of the department can change the contact details of the customer.
 * `CUS-3`: The tax ID of a customer is confidential. Only the managers of the department, accountants and auditors can see it. Administrators never see it.
 * `CUS-4`: Only a manager of the department can change the commercial terms of a customer: credit limit and payment terms.
+* `CUS-5`: A manager can move a customer from one department to another only when they manage both departments.
 
 #### Budgets
 
@@ -214,12 +261,13 @@ The person who creates an invoice is its owner. A person can hold several positi
 * `ACC-1`: Administrators create user accounts, and assign and revoke positions everywhere.
 * `ACC-2`: A department manager assigns and revokes positions in the departments they manage, and nowhere else.
 * `ACC-3`: A change of position takes effect immediately, for every user.
+* `ACC-4`: Nobody can give themself a position, administrators included.
 
 #### General principles
 
 * `GEN-1`: Separation of duties: an auditor never changes anything, whatever other position they hold.
 * `GEN-2`: Least privilege: administrators manage access, but do not see business data.
-* `GEN-3`: Every refused operation is recorded in a security log.
+* `GEN-3`: Every refused operation is recorded in a security log, and so is every change of positions or of ownership. A refusal message names the object only by its type and number, so that it discloses nothing to a user who cannot see the object.
 * `GEN-4`: Some operations are refused for business reasons, not for security reasons. For instance, an approved invoice cannot be edited, an invoice without lines cannot be approved, and a paid invoice cannot be voided. These refusals are not security events.
 
 #### Questions for the reviewer
@@ -227,7 +275,7 @@ The person who creates an invoice is its owner. A person can hold several positi
 The current model has the following properties. They are deliberate in this example, but a real business may decide otherwise:
 
 * A department assistant can overwrite the tax ID of a customer, although they cannot see it (`CUS-2`, `CUS-3`).
-* A department manager can assign any position in their department, including a position with more rights than their own, such as accountant (`ACC-2`). A real system restricts which positions each position may assign.
+* A department manager can assign any position in their department to another person, including a position with more rights than their own, such as accountant (`ACC-2`). They cannot take it themself (`ACC-4`), but a real system also restricts which positions each position may assign.
 * The owner of an invoice keeps access to it after the invoice moves to another department (`INV-2`, `INV-10`).
 * Every user can see who holds which position (`DIR-1`).
 * The rules do not depend on the status of an object. For instance, a manager can change the credit limit of a customer at any time.
@@ -235,7 +283,7 @@ The current model has the following properties. They are deliberate in this exam
 
 ### How the demo implements the model
 
-The positions are roles assigned on the company or on a department, and inherited by the objects below. The owner and the "every user" cases are the built-in roles `Owner` and `Everyone`:
+The positions are roles assigned on the company or on a department, and inherited by the objects below. The owner, the creator and the "every user" cases are computed roles: `Owner` and `Everyone` are built in, and the demo defines `Creator`:
 
 | Role | Scope | Responsibilities |
 |---|---|---|
@@ -244,8 +292,9 @@ The positions are roles assigned on the company or on a department, and inherite
 | Accountant | company | Records payments, voids invoices, manages budgets. Does not edit invoice content. |
 | Auditor | company | Reads everything, including sensitive data. Every change is denied. |
 | Administrator | company | Assigns and revokes roles everywhere. Sensitive data is denied. |
-| Owner (built in) | object | Reads and edits the invoice they created, but cannot approve it. |
-| Everyone (built in) | all | Reads the company directory. |
+| Owner (computed) | object | Reads and edits the invoice they own, but cannot approve it. |
+| Creator (computed) | invoice | Cannot approve the invoice they created, even after giving it to another owner. |
+| Everyone (computed) | all | Reads the company directory. |
 
 The sample data contains one person per typical combination of positions:
 
@@ -263,7 +312,7 @@ The sample data contains one person per typical combination of positions:
 
 The policy expresses three common security principles with `Deny` rules:
 
-* Four-eyes principle: the owner of an invoice cannot approve it, even as a department manager.
+* Four-eyes principle: neither the owner nor the creator of an invoice can approve it, even as a department manager. The creator rule is needed because a manager can change the owner of an invoice, but nobody can change its creator.
 * Segregation of duties: an auditor cannot change anything, even with a manager role in a department.
 * Least privilege: administrators manage access but cannot read sensitive data.
 
@@ -273,22 +322,26 @@ Authorization is a different concern from business rules. The policy answers "ma
 
 Moving an invoice to another department needs a parameter check. `Invoice.TransferTo` requires `ChangeOwnership` on the invoice and on the destination department. Without the second check, a user could move an invoice into a department where they have more rights.
 
-The program runs each scenario as a separate request of a user, through the application services, and prints the outcome. The auditor writes the denials to the log. Here is an excerpt:
+The program runs each scenario as a separate request of a user, through the application services, and prints the outcome. The auditor writes the denials, and the grants of the permissions that change rights, to the log. The messages name objects only by their label. Here is an excerpt:
 
 ```text
 Approving: the four-eyes principle and segregation of duties
   GOOD Mia approves Sam's invoice: succeeded
   GOOD Mia adds a line to the approved invoice (business rule): failed: Invoice SAL-0001 is Approved, expected Draft.
-warn: Metalama.Samples.Authorization.Demo.Services.LoggingAccessAuditor[277457468] Mia was denied Approve on Invoice.Approve of 'invoice MKT-0001'.
-  GOOD Mia approves her own marketing invoice: was denied: Cannot execute Invoice.Approve: 'Mia' does not have the Approve permission on 'invoice MKT-0001'.
-warn: Metalama.Samples.Authorization.Demo.Services.LoggingAccessAuditor[277457468] Grace was denied Approve on Invoice.Approve of 'invoice MKT-0001'.
-  GOOD Grace, marketing manager but also auditor, approves the marketing invoice: was denied: Cannot execute Invoice.Approve: 'Grace' does not have the Approve permission on 'invoice MKT-0001'.
+warn: Metalama.Samples.Authorization.Demo.Services.LoggingAccessAuditor[277457468] Mia was denied Approve on Invoice.Approve of Invoice #2.
+  GOOD Mia approves her own marketing invoice: was denied: Cannot execute Invoice.Approve: 'Mia' does not have the Approve permission on Invoice #2.
+info: Metalama.Samples.Authorization.Demo.Services.LoggingAccessAuditor[1113576134] Mia was granted ChangeOwnership on Entity.Owner of Invoice #2.
+  GOOD Mia gives her marketing invoice to Grace: succeeded
+warn: Metalama.Samples.Authorization.Demo.Services.LoggingAccessAuditor[277457468] Mia was denied Approve on Invoice.Approve of Invoice #2.
+  GOOD Mia approves the invoice that she created, now owned by Grace: was denied: Cannot execute Invoice.Approve: 'Mia' does not have the Approve permission on Invoice #2.
 ...
 Moving an invoice: checking the parameter
   GOOD Mia creates a sales invoice: succeeded
+info: Metalama.Samples.Authorization.Demo.Services.LoggingAccessAuditor[1113576134] Mia was granted ChangeOwnership on Invoice.TransferTo(target) of Department #2.
+info: Metalama.Samples.Authorization.Demo.Services.LoggingAccessAuditor[1113576134] Mia was granted ChangeOwnership on Invoice.TransferTo of Invoice #4.
   GOOD Mia moves it to Marketing, which she also manages: succeeded
-warn: Metalama.Samples.Authorization.Demo.Services.LoggingAccessAuditor[277457468] Mia was denied ChangeOwnership on Invoice.TransferTo(target) of 'Engineering'.
-  GOOD Mia moves it to Engineering: was denied: Cannot execute Invoice.TransferTo(target): 'Mia' does not have the ChangeOwnership permission on 'Engineering'.
+warn: Metalama.Samples.Authorization.Demo.Services.LoggingAccessAuditor[277457468] Mia was denied ChangeOwnership on Invoice.TransferTo(target) of Department #3.
+  GOOD Mia moves it to Engineering: was denied: Cannot execute Invoice.TransferTo(target): 'Mia' does not have the ChangeOwnership permission on Department #3.
 ```
 
 ## Persistence and dependency injection
@@ -323,7 +376,7 @@ A connection to an in-memory SQLite database cannot be used by concurrent reques
 
 ### Aspect tests
 
-The aspect tests in `Metalama.Samples.Authorization.Tests` verify the generated code. They cover each kind of target (methods, `async` methods, properties, `init` accessors, fields, method and constructor parameters), default permissions, inheritance by overrides and by abstract members, each level of options, and the eligibility errors.
+The aspect tests in `Metalama.Samples.Authorization.Tests` verify the generated code. They cover each kind of target (methods, `async` methods, properties, `init` accessors, fields, explicit interface implementations, method and constructor parameters), default permissions, inheritance by overrides and by abstract members, each level of options, the eligibility errors, and the warnings of the validator.
 
 Two tests, `Demo_SalesConventions` and `Demo_FinanceConventions`, compile the real configuration of the demo application with `// @Include` directives: the `Entity` base class and its storage types, the project fabric, the namespace fabric and the permission names. They show the code that this configuration generates. For instance, in the `Finance` namespace:
 
@@ -334,8 +387,8 @@ Two tests, `Demo_SalesConventions` and `Demo_FinanceConventions`, compile the re
 `Metalama.Samples.Authorization.UnitTests` tests the framework on small test types, independently of the demo:
 
 * `SecurityContextTests`: fail-closed behavior, system scopes, and context isolation across `await` and concurrent tasks.
-* `AccessGuardTests`: audit records and exception messages.
-* `RoleBasedPolicyTests`: allow and deny rules, type hierarchy, built-in roles, and role inheritance.
+* `AccessGuardTests`: audit records of denials and grants, labels in messages, and an auditor that runs without privileges.
+* `RoleBasedPolicyTests`: allow and deny rules, class hierarchy, built-in and application-defined computed roles, role inheritance through any parent, self-assignment, and the immutability of the policy.
 
 ### Unit tests of the demo security model
 
@@ -356,6 +409,7 @@ The other test classes cover what a single operation cannot show:
 
 * `WorkflowTests`: the invoice lifecycle, role changes that take effect immediately, transfers that change who inherits access, and the difference between a denied permission and a broken business rule.
 * `OptionsBehaviorTests`: proof at run time that each build-time option took effect.
+* `StructuralRulesTests`: the guarantees that do not depend on the policy, such as init-only names, private setters for references to secured objects, and read-only collections.
 * `AuditTests`: the content of audit records for the demo operations.
 * `PersistenceTests`: loading and saving run no check; every field of every entity is mapped; authorized changes and role assignments are persisted and effective in a new database context; denied changes leave the database unchanged; queries are not filtered; and complete workflows run through the services as separate requests, including concurrent requests of different users.
 
@@ -363,6 +417,6 @@ The other test classes cover what a single operation cannot show:
 
 * The policy evaluates the rules on each access and does not cache decisions. Each check allocates a `Permission` and walks the type hierarchy and the role assignments.
 * Rules apply to types, not to object states. "Only draft invoices can be edited" is a business rule in the `Invoice` methods.
-* A department manager can assign any role in their department, including roles with more rights. A real system restricts which roles each role may assign.
+* A department manager can assign any role in their department to another person, including a role with more rights than their own. Nobody can assign a role to themself, but a real system also restricts which roles each role may assign.
 * The aspects protect members, not rows. A user without any role can query invoices, but cannot read their members. To filter rows, use another mechanism, for instance an Entity Framework global query filter.
 * The demo uses an in-memory database, created and seeded at startup.

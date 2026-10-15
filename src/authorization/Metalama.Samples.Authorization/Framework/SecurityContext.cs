@@ -5,20 +5,23 @@ namespace Metalama.Samples.Authorization;
 /// flow with the logical call (<see cref="AsyncLocal{T}"/>), so they follow <c>async</c> code and stay
 /// isolated between concurrent operations.
 /// </summary>
+/// <remarks>
+/// <para>The framework enforces authorization inside a process against missing checks. It is not a sandbox: any
+/// code of the process can call <see cref="Use"/> or <see cref="RunAsSystem"/>. Only trusted infrastructure, such
+/// as an authentication middleware or a database seeder, should call them.</para>
+/// <para>A context or a system scope also applies to the tasks started while it is active, because
+/// <see cref="AsyncLocal{T}"/> values flow into them.</para>
+/// </remarks>
 public static class SecurityContext
 {
     private static readonly AsyncLocal<ISecurityContext?> _current = new();
     private static readonly AsyncLocal<bool> _isSystem = new();
 
     /// <summary>
-    /// Gets or sets the current security context. When it is <c>null</c>, every secured operation fails,
-    /// except in a system scope.
+    /// Gets the current security context. When it is <c>null</c>, every secured operation fails,
+    /// except in a system scope. Set it with <see cref="Use"/>.
     /// </summary>
-    public static ISecurityContext? Current
-    {
-        get => _current.Value;
-        set => _current.Value = value;
-    }
+    public static ISecurityContext? Current => _current.Value;
 
     /// <summary>
     /// Gets a value indicating whether the code runs in a system scope, where no permission is checked.
@@ -38,7 +41,7 @@ public static class SecurityContext
 
     /// <summary>
     /// Disables permission checks until the returned object is disposed. Use it for trusted code such as
-    /// loading data from a database or seeding test data. The framework also uses it while a policy runs.
+    /// seeding a database. The framework also uses it while a policy runs.
     /// </summary>
     public static IDisposable RunAsSystem()
     {

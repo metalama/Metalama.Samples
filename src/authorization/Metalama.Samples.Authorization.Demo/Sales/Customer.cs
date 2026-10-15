@@ -16,7 +16,8 @@ public sealed class Customer( Department department, string name ) : Entity
     // Used by Entity Framework, which then sets the backing fields.
     private Customer() : this( null!, null! ) { }
 
-    public Department Department { get; set; } = department;
+    // The department changes only through MoveTo, which checks the destination.
+    public Department Department { get; private set; } = department;
 
     [AuthorizationOptions( DefaultWritePermission = PermissionNames.Write )]
     public string Name { get; set; } = name;
@@ -32,6 +33,13 @@ public sealed class Customer( Department department, string name ) : Entity
     public int PaymentTermDays { get; set; } = 30;
 
     protected override IRoleBasedSecurable? SecurityParent => this.Department;
+
+    /// <summary>
+    /// Moves the customer to another department. The user needs <c>ChangeOwnership</c> on the customer
+    /// and on the destination.
+    /// </summary>
+    [RequiresPermission( PermissionNames.ChangeOwnership )]
+    public void MoveTo( [RequiresPermission( PermissionNames.ChangeOwnership )] Department target ) => this.Department = target;
 
     public override string ToString() => this.Name;
 }

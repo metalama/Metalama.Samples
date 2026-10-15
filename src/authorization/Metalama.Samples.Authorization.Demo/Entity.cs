@@ -11,8 +11,15 @@ namespace Metalama.Samples.Authorization.Demo;
 /// a <see cref="User"/> navigation and a collection of <see cref="RoleAssignmentRecord"/>.
 /// </remarks>
 [ApplyDefaultPermissions]
-public abstract class Entity : RoleBasedSecurable
+public abstract class Entity : RoleBasedSecurable, IHasSecurityLabel
 {
+    /// <summary>
+    /// Gets the label used in denial messages and audit records, for instance <c>Invoice #12</c>.
+    /// It contains no protected data, so it is not secured.
+    /// </summary>
+    [AuthorizationOptions( IsDefaultSecuringEnabled = false )]
+    public string SecurityLabel => $"{this.GetType().Name} #{this.Id}";
+
     /// <summary>
     /// Gets the database key. It identifies the object and is not confidential.
     /// </summary>

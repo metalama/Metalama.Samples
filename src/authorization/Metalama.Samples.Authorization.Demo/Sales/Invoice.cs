@@ -27,11 +27,12 @@ public sealed class Invoice : Entity
         this.Number = null!;
     }
 
-    internal Invoice( Department department, Customer customer, string number )
+    internal Invoice( Department department, Customer customer, string number, User? creator )
     {
         this._department = department;
         this.Customer = customer;
         this.Number = number;
+        this.CreatorUser = creator;
         this.DueDate = DateOnly.FromDateTime( DateTime.Today ).AddDays( 30 );
     }
 
@@ -42,7 +43,13 @@ public sealed class Invoice : Entity
     [AuthorizationOptions( IsDefaultSecuringEnabled = false )]
     public string Number { get; }
 
-    public Customer Customer { get; set; } = null!;
+    // The customer changes only through ChangeCustomer, which checks the new customer.
+    public Customer Customer { get; private set; } = null!;
+
+    /// <summary>
+    /// Gets the person who created the invoice. Unlike the owner, the creator never changes.
+    /// </summary>
+    public ISubject? Creator => this.CreatorUser;
 
     public DateOnly DueDate { get; set; }
 
@@ -50,7 +57,9 @@ public sealed class Invoice : Entity
 
     public InvoiceStatus Status => this._status;
 
-    public IReadOnlyList<InvoiceLine> Lines => this._lines;
+    // A secured getter must not return a mutable reference to the secured state: a caller with Read could
+    // cast the list and change the lines without Write.
+    public IReadOnlyList<InvoiceLine> Lines => this._lines.AsReadOnly();
 
     public decimal Total => this._lines.Sum( l => l.Amount );
 
@@ -60,7 +69,22 @@ public sealed class Invoice : Entity
 
     protected override IRoleBasedSecurable? SecurityParent => this._department;
 
-    // No attribute: the project fabric makes Write the default permission of methods.
+    // Storage of the creator, mapped by Entity Framework.
+    private User? CreatorUser { get; set; }
+
+    protected override bool HasComputedRole( ISubject subject, Role role )
+        => role == DemoRoles.Creator && subject.Equals( this.CreatorUser );
+
+    /// <summary>
+    /// Bills another customer. The user must be able to edit the invoice and to read the new customer.
+    /// </summary>
+    public void ChangeCustomer( [RequiresPermission( PermissionNames.Read )] Customer customer )
+    {
+        this.EnsureStatus( InvoiceStatus.Draft );
+        this.Customer = customer;
+    }
+
+    // No attribute: Write is the default permission of methods.
     public void AddLine( string description, decimal quantity, decimal unitPrice )
     {
         this.EnsureStatus( InvoiceStatus.Draft );

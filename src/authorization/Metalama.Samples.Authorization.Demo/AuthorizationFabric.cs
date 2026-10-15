@@ -13,9 +13,6 @@ internal sealed class AuthorizationFabric : ProjectFabric
         => amender.SetOptions(
             new AuthorizationOptions
             {
-                // Methods without [RequiresPermission] change the object, so they require Write.
-                DefaultExecutePermission = PermissionNames.Write,
-
                 // internal and protected members are secured too, because other code of this assembly
                 // must not bypass checks by calling them.
                 SecureNonPublicMembers = true

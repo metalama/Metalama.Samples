@@ -7,7 +7,8 @@ namespace Metalama.Samples.Authorization.Demo;
 /// </summary>
 public sealed class Company( string name ) : Entity
 {
-    public string Name { get; set; } = name;
+    // Init-only: the application cannot rename the company, whatever the rules of the policy.
+    public string Name { get; init; } = name;
 
     protected override IRoleBasedSecurable? SecurityParent => null;
 

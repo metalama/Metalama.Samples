@@ -60,6 +60,8 @@ public sealed class InvoicingDbContext( DbContextOptions<InvoicingDbContext> opt
                     invoice.HasIndex( i => i.Number ).IsUnique();
                     invoice.HasOne( i => i.Department ).WithMany();
                     invoice.HasOne( i => i.Customer ).WithMany();
+                    invoice.HasOne<User>( "CreatorUser" ).WithMany();
+                    invoice.Ignore( i => i.Creator );
                     invoice.OwnsMany( i => i.Lines, line => UseSingleColumnKey( line ) );
                 } );
 
@@ -79,6 +81,7 @@ public sealed class InvoicingDbContext( DbContextOptions<InvoicingDbContext> opt
         modelBuilder.Entity<Customer>().Navigation( c => c.Department ).AutoInclude();
         modelBuilder.Entity<Invoice>().Navigation( i => i.Department ).AutoInclude();
         modelBuilder.Entity<Invoice>().Navigation( i => i.Customer ).AutoInclude();
+        modelBuilder.Entity<Invoice>().Navigation( "CreatorUser" ).AutoInclude();
         modelBuilder.Entity<Budget>().Navigation( b => b.Department ).AutoInclude();
     }
 
@@ -100,6 +103,7 @@ public sealed class InvoicingDbContext( DbContextOptions<InvoicingDbContext> opt
                 // The public members are the secured, computed views of the storage members.
                 entity.Ignore( e => e.Owner );
                 entity.Ignore( e => e.RoleAssignments );
+                entity.Ignore( e => e.SecurityLabel );
 
                 entity.HasOne<User>( "OwnerUser" ).WithMany();
                 entity.Navigation( "OwnerUser" ).AutoInclude();

@@ -2,7 +2,7 @@ namespace Metalama.Samples.Authorization.RoleBased;
 
 /// <summary>
 /// Base class for objects secured by <see cref="RoleBasedAuthorizationPolicy"/>. It implements role resolution:
-/// built-in roles, assigned roles, and inheritance through the <see cref="SecurityParent"/> chain.
+/// computed roles, assigned roles, and inheritance through the <see cref="SecurityParent"/> chain.
 /// </summary>
 /// <remarks>
 /// <para>The class does not store anything. Derived classes store the owner and the role assignments, for instance
@@ -28,7 +28,7 @@ public abstract class RoleBasedSecurable : IRoleBasedSecurable
     public IReadOnlyList<RoleAssignment> RoleAssignments => [.. this.GetRoleAssignments()];
 
     /// <summary>
-    /// Gets the object from which this object inherits role assignments, or <c>null</c>.
+    /// Gets the object from which this object inherits assigned roles, or <c>null</c>.
     /// </summary>
     [AuthorizationOptions( IsDefaultSecuringEnabled = false )]
     protected abstract IRoleBasedSecurable? SecurityParent { get; }
@@ -55,14 +55,31 @@ public abstract class RoleBasedSecurable : IRoleBasedSecurable
     protected abstract bool RemoveRoleAssignment( RoleAssignment assignment );
 
     /// <summary>
-    /// Assigns a role to a subject on this object.
+    /// Determines whether <paramref name="subject"/> has a computed role defined by the application
+    /// (see <see cref="Role.Computed"/>). The default implementation returns <c>false</c>.
+    /// </summary>
+    [AuthorizationOptions( IsDefaultSecuringEnabled = false )]
+    protected virtual bool HasComputedRole( ISubject subject, Role role ) => false;
+
+    /// <summary>
+    /// Assigns a role to a subject on this object. Nobody can assign a role to themself.
     /// </summary>
     [RequiresPermission( PermissionNames.ManageRoles )]
     public void AssignRole( ISubject subject, Role role )
     {
-        if ( role.IsBuiltIn )
+        if ( role.IsComputed )
         {
-            throw new ArgumentException( $"The built-in role '{role}' cannot be assigned.", nameof(role) );
+            throw new ArgumentException( $"The computed role '{role}' cannot be assigned.", nameof(role) );
+        }
+
+        // Without this rule, anyone who manages roles could give themself any right.
+        if ( !SecurityContext.IsSystem && subject.Equals( SecurityContext.Current?.Subject ) )
+        {
+            AccessGuard.Deny(
+                this,
+                PermissionNames.ManageRoles,
+                $"{nameof(RoleBasedSecurable)}.{nameof(this.AssignRole)}",
+                $"'{subject.Name}' cannot assign a role to themself" );
         }
 
         var assignment = new RoleAssignment( subject, role );
@@ -83,27 +100,28 @@ public abstract class RoleBasedSecurable : IRoleBasedSecurable
     /// <inheritdoc />
     public bool HasRole( ISubject subject, Role role )
     {
-        if ( role == Role.Everyone )
+        // Computed roles apply to the object itself and are not inherited by children.
+        if ( role.IsComputed )
+        {
+            if ( role == Role.Everyone )
+            {
+                return true;
+            }
+
+            if ( role == Role.Owner )
+            {
+                return subject.Equals( this.Owner );
+            }
+
+            return this.HasComputedRole( subject, role );
+        }
+
+        if ( this.GetRoleAssignments().Contains( new RoleAssignment( subject, role ) ) )
         {
             return true;
         }
 
-        // Ownership applies to the object itself and is not inherited by children.
-        if ( role == Role.Owner )
-        {
-            return subject.Equals( this.Owner );
-        }
-
-        var assignment = new RoleAssignment( subject, role );
-
-        for ( IRoleBasedSecurable? ancestor = this; ancestor != null; ancestor = ancestor.SecurityParent )
-        {
-            if ( ancestor is RoleBasedSecurable securable && securable.GetRoleAssignments().Contains( assignment ) )
-            {
-                return true;
-            }
-        }
-
-        return false;
+        // Delegating to the parent supports any implementation of IRoleBasedSecurable in the chain.
+        return this.SecurityParent?.HasRole( subject, role ) == true;
     }
 }
