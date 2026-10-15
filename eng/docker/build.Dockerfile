@@ -68,14 +68,14 @@ RUN & .\dotnet-install.ps1 -Version 10.0.400 -InstallDir 'C:\Program Files\dotne
 RUN $env:DOTNET_INSTALL_SKIP_TAR = '1'; & .\dotnet-install.ps1 -Version 11.0.100-rc.2.26504.105 -InstallDir 'C:\Program Files\dotnet'
 
 
-# Install .NET workload maui-windows
-RUN dotnet workload install maui-windows --include-previews
-
-
 # .NET Dump Tool
 RUN dotnet tool install --global dotnet-dump;
 
 ENV PATH="C:\Users\ContainerAdministrator\.dotnet\tools;${PATH}"
+
+
+# Install .NET workload maui-windows
+RUN dotnet workload install maui-windows --include-previews
 
 
 # Epilogue

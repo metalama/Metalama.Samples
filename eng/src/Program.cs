@@ -85,35 +85,3 @@ void OnTestCompleted( BuildCompletedEventArgs args )
         archive.CreateEntryFromFile( sourceFile, match.Path );
     }
 }
-
-// PostSharp.Engineering has no component for .NET workloads, so this product defines its own.
-internal sealed class DotNetWorkloadComponent : ContainerComponent
-{
-    private readonly string _workload;
-    private readonly bool _includePreviews;
-
-    public DotNetWorkloadComponent( string workload, bool includePreviews = false )
-    {
-        this._workload = workload;
-        this._includePreviews = includePreviews;
-    }
-
-    public override string Name => $"Install .NET workload {this._workload}";
-
-    public override ContainerComponentKind Kind => ContainerComponentKind.DotNet;
-
-    // The key must include the workload name, otherwise two workloads would be the same component.
-    public override string Key => $"DotNetWorkload:{this._workload}";
-
-    // The .NET SDKs are installed at 1200 and the timestamp is written at 1400. A workload requires an SDK.
-    public override int SortOrder => 1250;
-
-    public override void WriteDockerfile( TextWriter writer, ContainerOperatingSystem operatingSystem )
-    {
-        // The workload is installed for the feature band of the SDK that runs the command, which is the
-        // highest SDK of the image, therefore the main SDK of the product.
-        var options = this._includePreviews ? " --include-previews" : "";
-
-        writer.WriteLine( $"RUN dotnet workload install {this._workload}{options}" );
-    }
-}
