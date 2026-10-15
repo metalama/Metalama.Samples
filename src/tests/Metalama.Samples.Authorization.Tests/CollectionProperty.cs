@@ -7,7 +7,7 @@ public class Document
 {
     private readonly List<string> _authors = [];
 
-    // IList<T> and ICollection<T>: the getter returns a secured view, so changing the content requires Write.
+    // IList<T> and ICollection<T>: the getter returns a guarded view, so changing the content requires Write.
     public IList<string> Tags { get; } = new List<string>();
 
     public ICollection<int> Pages => this._pages;

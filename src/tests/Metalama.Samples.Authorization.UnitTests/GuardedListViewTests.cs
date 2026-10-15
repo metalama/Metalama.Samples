@@ -4,7 +4,7 @@ using static Metalama.Samples.Authorization.PermissionNames;
 
 namespace Metalama.Samples.Authorization.UnitTests;
 
-public class SecuredListTests
+public class GuardedListViewTests
 {
     private static readonly RoleBasedAuthorizationPolicy _policy = new RoleBasedAuthorizationPolicyBuilder()
         .Allow<Folder>( Read, Role.Everyone )
@@ -15,7 +15,7 @@ public class SecuredListTests
     private readonly TestUser _editor = new( "editor" );
     private readonly Folder _folder;
 
-    public SecuredListTests()
+    public GuardedListViewTests()
     {
         using ( SecurityContext.RunAsSystem() )
         {

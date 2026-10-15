@@ -1,6 +1,6 @@
-// Warning AUTH003 on `Reviewers`: `'Document.Reviewers' exposes the mutable collection type 'List<string>': any caller who can read it can change its content without the write permission. Declare it as IList<T> or ICollection<T>, which the getter wraps in a secured view, or as a read-only type.`
-// Warning AUTH003 on `Sections`: `'Document.Sections' exposes the mutable collection type 'string[]': any caller who can read it can change its content without the write permission. Declare it as IList<T> or ICollection<T>, which the getter wraps in a secured view, or as a read-only type.`
-// Warning AUTH003 on `Metadata`: `'Document.Metadata' exposes the mutable collection type 'Dictionary<string, string>': any caller who can read it can change its content without the write permission. Declare it as IList<T> or ICollection<T>, which the getter wraps in a secured view, or as a read-only type.`
+// Warning AUTH003 on `Reviewers`: `'Document.Reviewers' exposes the mutable collection type 'List<string>': any caller who can read it can change its content without the write permission. Declare it as IList<T> or ICollection<T>, which the getter wraps in a guarded view, or as a read-only type.`
+// Warning AUTH003 on `Sections`: `'Document.Sections' exposes the mutable collection type 'string[]': any caller who can read it can change its content without the write permission. Declare it as IList<T> or ICollection<T>, which the getter wraps in a guarded view, or as a read-only type.`
+// Warning AUTH003 on `Metadata`: `'Document.Metadata' exposes the mutable collection type 'Dictionary<string, string>': any caller who can read it can change its content without the write permission. Declare it as IList<T> or ICollection<T>, which the getter wraps in a guarded view, or as a read-only type.`
 using System.Collections.Immutable;
 namespace Metalama.Samples.Authorization.Tests.CollectionProperty;
 [ApplyDefaultPermissions]
@@ -8,13 +8,13 @@ public class Document
 {
   private readonly List<string> _authors = [];
   private readonly IList<string> _tags = new List<string>();
-  // IList<T> and ICollection<T>: the getter returns a secured view, so changing the content requires Write.
+  // IList<T> and ICollection<T>: the getter returns a guarded view, so changing the content requires Write.
   public IList<string> Tags
   {
     get
     {
       AccessGuard.Demand(this, "Read", "Document.Tags", AccessKind.Read);
-      return SecuredCollection.Wrap(_tags, this, "Write", "Document.Tags");
+      return GuardedCollection.Wrap(_tags, this, "Write", "Document.Tags");
     }
     private init
     {
@@ -26,7 +26,7 @@ public class Document
     get
     {
       AccessGuard.Demand(this, "Read", "Document.Pages", AccessKind.Read);
-      return SecuredCollection.Wrap(Pages_Source, this, "Write", "Document.Pages");
+      return GuardedCollection.Wrap(Pages_Source, this, "Write", "Document.Pages");
     }
   }
   private ICollection<int> Pages_Source => this._pages;

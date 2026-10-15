@@ -166,7 +166,7 @@ public sealed class RequiresPermissionAttribute : Aspect, IAspect<IMethod>, IAsp
 
         if ( wrapCollection )
         {
-            return SecuredCollection.Wrap( meta.Proceed(), meta.This, writePermission, member );
+            return GuardedCollection.Wrap( meta.Proceed(), meta.This, writePermission, member );
         }
 
         return meta.Proceed();

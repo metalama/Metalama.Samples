@@ -16,7 +16,7 @@ internal enum CollectionKind
     None,
 
     /// <summary>
-    /// <see cref="IList{T}"/> or <see cref="ICollection{T}"/>: the getter returns a <see cref="SecuredList{T}"/> view.
+    /// <see cref="IList{T}"/> or <see cref="ICollection{T}"/>: the getter returns a <see cref="GuardedListView{T}"/> view.
     /// </summary>
     Wrappable,
 

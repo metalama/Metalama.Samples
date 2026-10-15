@@ -83,7 +83,7 @@ A few details are worth noting:
 
 * For a parameter, the aspect adds a contract with `AddContract`. Only parameters that have the attribute get a check.
 * A private setter is not checked. The class changes its own state through it, typically from a method that is itself secured.
-* The getter of a property of type `IList<T>` or `ICollection<T>` returns a `SecuredList<T>` view of the list (see [Collections](#collections)).
+* The getter of a property of type `IList<T>` or `ICollection<T>` returns a `GuardedListView<T>` view of the list (see [Collections](#collections)).
 * The aspect is `[Inheritable]`. An override of a secured virtual member gets the same check, so a derived class cannot skip it by not calling the base implementation. On an abstract member, the aspect secures all the overrides.
 * The eligibility rules reject static members, `out` parameters and parameters of a value type. Static members have no instance on which to check a permission. Abstract members are rejected except through inheritance, with `builder.ExceptForInheritance().MustNotBeAbstract()`.
 * When the attribute does not name a permission, the defaults of `AuthorizationOptions` apply. A method requires `Write` by default.
@@ -120,13 +120,13 @@ Two details of the validator come from the way Metalama transforms the code. To 
 
 A check on a getter protects the reference that it returns, not the content of the object behind it. When a property returns a mutable list, a user who can only read the property can still add or remove items, which bypasses the write permission. The framework handles collections in three ways:
 
-* A property declared as `IList<T>` or `ICollection<T>` is wrapped. The getter returns a `SecuredList<T>`, a view that reads the list of the owner without any further check, and demands the write permission of the property on the owner for each change: `Add`, `Insert`, `Remove`, `RemoveAt`, `Clear` and the indexer setter. The view checks the subject at the moment of the change, not the subject that read the property.
+* A property declared as `IList<T>` or `ICollection<T>` is wrapped. The getter returns a `GuardedListView<T>`, a view that reads the list of the owner without any further check, and demands the write permission of the property on the owner for each change: `Add`, `Insert`, `Remove`, `RemoveAt`, `Clear` and the indexer setter. The view checks the subject at the moment of the change, not the subject that read the property.
 * A property declared with a read-only type, such as `IReadOnlyList<T>` or `ImmutableArray<T>`, is returned as it is. The class must not return a mutable object behind the read-only type: the aspect cannot verify it.
 * A property declared with a mutable type that the view cannot replace, such as `List<T>`, an array, a set or a dictionary, gets the warning `AUTH003`.
 
-[!metalama-file Metalama.Samples.Authorization/Framework/SecuredList.cs]
+[!metalama-file Metalama.Samples.Authorization/Framework/GuardedListView.cs]
 
-The demo uses both of the safe forms. `Invoice.Notes` is an `IList<string>`: anyone who can edit the invoice can add or remove notes, at any time, so the secured view is enough. `Invoice.Lines` is an `IReadOnlyList<InvoiceLine>`: lines change only through `AddLine` and `RemoveLine`, because these methods also enforce a business rule (only a draft can be edited), which a list cannot do.
+The demo uses both of the safe forms. `Invoice.Notes` is an `IList<string>`: anyone who can edit the invoice can add or remove notes, at any time, so the guarded view is enough. `Invoice.Lines` is an `IReadOnlyList<InvoiceLine>`: lines change only through `AddLine` and `RemoveLine`, because these methods also enforce a business rule (only a draft can be edited), which a list cannot do.
 
 [!metalama-test ../tests/Metalama.Samples.Authorization.Tests/CollectionProperty.cs]
 
@@ -134,7 +134,7 @@ The demo uses both of the safe forms. `Invoice.Notes` is an `IList<string>`: any
 
 The aspects check the accesses to the members of a class. They cannot check what the class does with the references that it returns or receives. A securable class therefore follows these rules, which the demo applies:
 
-* A secured getter must not return a mutable reference to the secured state. A list is exposed as `IList<T>`, which the aspect wraps in a secured view, or as a read-only type backed by a read-only object. `Invoice.Lines` returns a read-only wrapper of its list: otherwise, a user with `Read` could cast the result and change the lines without `Write`.
+* A secured getter must not return a mutable reference to the secured state. A list is exposed as `IList<T>`, which the aspect wraps in a guarded view, or as a read-only type backed by a read-only object. `Invoice.Lines` returns a read-only wrapper of its list: otherwise, a user with `Read` could cast the result and change the lines without `Write`.
 * A reference to another secured object changes only through a method with a parameter check. A setter can only check the object that it belongs to, not the new value. So `Invoice.Customer` and `Customer.Department` have private setters, and `Invoice.ChangeCustomer` and `Customer.MoveTo` check the permission on the new value.
 * A guarantee that does not depend on the policy is structural. `Company.Name` and `Department.Name` are init-only, so no rule added to the policy later can allow renaming them.
 * A label identifies the object in messages without disclosing its data (see `IHasSecurityLabel` below).
@@ -381,7 +381,7 @@ Entity Framework reads and writes every mapped property when it loads an object,
 
 * The model uses `PropertyAccessMode.Field`. Entity Framework reads and writes the backing fields directly, including the fields that Metalama generates when it overrides an auto-property.
 * The constructor that Entity Framework uses must not call a secured setter. Each entity has a private constructor for Entity Framework that only sets fields, or that chains to a primary constructor whose parameters initialize the properties. A property initializer sets the backing field and runs no check.
-* The storage members of `Entity`, which hold the owner and the role assignments, are excluded from default securing with `[AuthorizationOptions( IsDefaultSecuringEnabled = false )]`. The public `Owner` and `RoleAssignments` members are the secured views of these members, and the model ignores them.
+* The storage members of `Entity`, which hold the owner and the role assignments, are excluded from default securing with `[AuthorizationOptions( IsDefaultSecuringEnabled = false )]`. The public `Owner` and `RoleAssignments` members are the guarded views of these members, and the model ignores them.
 * The navigations that the security model needs are loaded automatically with `AutoInclude`: the parent chain of each object, its owner, and its role assignments. Otherwise, a role inherited from a parent that is not loaded would be missed. The policy would then deny the access, which is safe but wrong.
 * By convention, Entity Framework maps only the properties that have a setter. The get-only properties that expose the state of an object, such as `Invoice.Status`, are mapped explicitly. A test checks that every field of every entity is mapped.
 
@@ -393,7 +393,7 @@ A connection to an in-memory SQLite database cannot be used by concurrent reques
 
 ### Aspect tests
 
-The aspect tests in `Metalama.Samples.Authorization.Tests` verify the generated code. They cover each kind of target (methods, `async` methods, properties, `init` accessors, fields, explicit interface implementations, method and constructor parameters), default permissions, inheritance by overrides and by abstract members, each level of options, the eligibility errors, the secured views of collections, and the warnings of the validator.
+The aspect tests in `Metalama.Samples.Authorization.Tests` verify the generated code. They cover each kind of target (methods, `async` methods, properties, `init` accessors, fields, explicit interface implementations, method and constructor parameters), default permissions, inheritance by overrides and by abstract members, each level of options, the eligibility errors, the guarded views of collections, and the warnings of the validator.
 
 Two tests, `Demo_SalesConventions` and `Demo_FinanceConventions`, compile the real configuration of the demo application with `// @Include` directives: the `Entity` base class and its storage types, the project fabric, the namespace fabric and the permission names. They show the code that this configuration generates. For instance, in the `Finance` namespace:
 
@@ -405,7 +405,7 @@ Two tests, `Demo_SalesConventions` and `Demo_FinanceConventions`, compile the re
 
 * `SecurityContextTests`: fail-closed behavior, system scopes, and context isolation across `await` and concurrent tasks.
 * `AccessGuardTests`: audit records of denials and grants, labels in messages, and an auditor that runs without privileges.
-* `SecuredListTests`: reading a secured list, changes denied without the write permission, and changes by an authorized subject.
+* `GuardedListViewTests`: reading a guarded list, changes denied without the write permission, and changes by an authorized subject.
 * `RoleBasedPolicyTests`: allow and deny rules, class hierarchy, built-in and application-defined computed roles, role inheritance through any parent, self-assignment, and the immutability of the policy.
 
 ### Unit tests of the demo security model

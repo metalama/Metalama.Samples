@@ -41,7 +41,7 @@ public sealed class ApplyDefaultPermissionsAttribute : TypeAspect
         "AUTH003",
         Severity.Warning,
         "'{0}' exposes the mutable collection type '{1}': any caller who can read it can change its content without " +
-        "the write permission. Declare it as IList<T> or ICollection<T>, which the getter wraps in a secured view, or as a read-only type." );
+        "the write permission. Declare it as IList<T> or ICollection<T>, which the getter wraps in a guarded view, or as a read-only type." );
 
     public override void BuildAspect( IAspectBuilder<INamedType> builder )
     {

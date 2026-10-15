@@ -63,7 +63,7 @@ public sealed class Invoice : Entity
 
     /// <summary>
     /// Gets the internal notes of the invoice. Unlike the lines, notes have no business rule: anyone who can edit the
-    /// invoice can add or remove notes at any time. The getter returns a secured view of the list, so reading the
+    /// invoice can add or remove notes at any time. The getter returns a guarded view of the list, so reading the
     /// notes requires Read, and changing them requires Write.
     /// </summary>
     public IList<string> Notes { get; } = new List<string>();
