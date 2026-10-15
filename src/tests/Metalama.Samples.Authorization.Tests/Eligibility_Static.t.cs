@@ -1,0 +1,2 @@
+// Error LAMA0037 on `RequiresPermission( "Write" )`: `The aspect 'RequiresPermission' cannot be applied to the method 'Registry.Reset()' because 'Registry.Reset()' must not be static.`
+// Error LAMA0037 on `RequiresPermission( "Read" )`: `The aspect 'RequiresPermission' cannot be applied to the property 'Registry.Count' because 'Registry.Count' must not be static.`

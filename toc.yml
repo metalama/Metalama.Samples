@@ -159,6 +159,8 @@ items:
               topicUid: sample-call-telemetry-3
         - name: Generating interception proxies
           topicUid: sample-proxy
+    - name: Authorization
+      topicUid: sample-authorization
 
     - name: Metrics
       topicUid: sample-metrics

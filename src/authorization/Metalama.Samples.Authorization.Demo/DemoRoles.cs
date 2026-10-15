@@ -1,0 +1,35 @@
+using Metalama.Samples.Authorization.RoleBased;
+
+namespace Metalama.Samples.Authorization.Demo;
+
+/// <summary>
+/// Roles of the invoicing domain. They are assigned on a <see cref="Company"/> or a <see cref="Department"/>
+/// and inherited by the objects below it.
+/// </summary>
+public static class DemoRoles
+{
+    /// <summary>
+    /// Runs a department: approves its invoices, maintains its customers, sees its budget, staffs it.
+    /// </summary>
+    public static Role DepartmentManager { get; } = new( nameof(DepartmentManager) );
+
+    /// <summary>
+    /// Prepares and sends the invoices of a department, and maintains customer contact details.
+    /// </summary>
+    public static Role DepartmentAssistant { get; } = new( nameof(DepartmentAssistant) );
+
+    /// <summary>
+    /// Records payments, voids invoices and manages budgets, company-wide. Does not edit invoice content.
+    /// </summary>
+    public static Role Accountant { get; } = new( nameof(Accountant) );
+
+    /// <summary>
+    /// Reads everything, including sensitive data, and is denied any change (segregation of duties).
+    /// </summary>
+    public static Role Auditor { get; } = new( nameof(Auditor) );
+
+    /// <summary>
+    /// Manages role assignments everywhere, but is denied access to sensitive business data.
+    /// </summary>
+    public static Role Administrator { get; } = new( nameof(Administrator) );
+}

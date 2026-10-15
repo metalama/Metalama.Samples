@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <IsPackable>false</IsPackable>
+        <Configurations>Debug;Release;LamaDebug</Configurations>
+        <SampleProjectKind>TestProject</SampleProjectKind>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.NET.Test.Sdk"/>
+        <PackageReference Include="xunit"/>
+        <PackageReference Include="xunit.runner.visualstudio">
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
+        <PackageReference Include="coverlet.collector">
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
+        <PackageReference Include="Metalama.Testing.AspectTesting"/>
+    </ItemGroup>
+
+    <!-- The Demo_*.cs tests include the real configuration of the demo with // @Include directives.
+         These links make the same files visible to the IDE and the C# compiler. -->
+    <ItemGroup>
+        <Compile Include="..\..\authorization\Metalama.Samples.Authorization.Demo\Entity.cs" Link="DemoConfiguration\Entity.cs"/>
+        <Compile Include="..\..\authorization\Metalama.Samples.Authorization.Demo\AuthorizationFabric.cs" Link="DemoConfiguration\AuthorizationFabric.cs"/>
+        <Compile Include="..\..\authorization\Metalama.Samples.Authorization.Demo\DemoPermissions.cs" Link="DemoConfiguration\DemoPermissions.cs"/>
+        <Compile Include="..\..\authorization\Metalama.Samples.Authorization.Demo\Finance\FinanceFabric.cs" Link="DemoConfiguration\FinanceFabric.cs"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\authorization\Metalama.Samples.Authorization\Metalama.Samples.Authorization.csproj"/>
+    </ItemGroup>
+
+</Project>
