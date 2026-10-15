@@ -41,9 +41,12 @@ framework. When such a hook exists, prefer it to interceptors:
 * For libraries that publish events with `DiagnosticSource`, `ActivitySource` or `Meter`, subscribe to these events,
   for instance with the OpenTelemetry instrumentation packages.
 
-Interceptors only rewrite the calls that are in the source code of the current project. They do not see the calls
-made inside the library, by the framework, or through reflection. Use interceptors when the library has no such hook,
-when the API is static, such as `File.Delete`, or when the telemetry must know the calling code.
+> [!WARNING]
+> Interceptors only rewrite the calls that are in the source code of the current project. They do not see the calls
+> made inside the library, by the framework, or through reflection.
+
+Use interceptors when the library has no such hook, when the API is static, such as `File.Delete`, or when the
+telemetry must know the calling code.
 
 > [!div class="see-also"]
 > <xref:interceptors>
