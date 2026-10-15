@@ -1,6 +1,6 @@
 #if TEST_OPTIONS
-// @Include(../../call-telemetry/call-telemetry-1/AuditFabric.cs)
-// @Include(../../call-telemetry/call-telemetry-1/Audit.cs)
+// @Include(../../../call-telemetry/call-telemetry-1/AuditFabric.cs)
+// @Include(../../../call-telemetry/call-telemetry-1/Audit.cs)
 #endif
 
 using System.Diagnostics;
