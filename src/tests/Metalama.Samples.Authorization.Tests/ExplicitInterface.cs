@@ -7,8 +7,7 @@ public interface IArchivable
     bool IsArchived { get; }
 }
 
-[SecurableType]
-public class Document : IArchivable
+public class Document : IArchivable, ISecurable
 {
     private bool _isArchived;
 

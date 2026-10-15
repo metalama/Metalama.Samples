@@ -24,6 +24,18 @@ public sealed class Budget( Department department, int fiscalYear, decimal amoun
 
     public decimal Remaining => this._amount - this._spent;
 
+    /// <summary>
+    /// Gets the level of the budget, without its amounts. It requires only <see cref="PermissionNames.Read"/>, so the
+    /// staff of the department can see it. It is computed from <see cref="Amount"/> and <see cref="Remaining"/>, which
+    /// require <see cref="DemoPermissions.ReadSensitive"/>, so the property grants this permission while it runs.
+    /// </summary>
+    [RequiresPermission( PermissionNames.Read )]
+    [GrantsPermissions( DemoPermissions.ReadSensitive )]
+    public BudgetStatus Status
+        => this.Remaining <= 0 ? BudgetStatus.Exhausted
+            : this.Remaining < this.Amount / 10 ? BudgetStatus.Low
+            : BudgetStatus.Available;
+
     protected override IRoleBasedSecurable? SecurityParent => this.Department;
 
     // No attribute: Write is the default permission of methods.

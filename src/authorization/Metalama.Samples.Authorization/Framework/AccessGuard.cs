@@ -15,7 +15,7 @@ public static class AccessGuard
     /// <param name="member">The name of the member being accessed, for messages and audit.</param>
     /// <param name="accessKind">The kind of access.</param>
     /// <exception cref="InvalidOperationException">There is no current security context.</exception>
-    public static void Demand( object securable, string permission, string member, AccessKind accessKind )
+    public static void Demand( ISecurable securable, string permission, string member, AccessKind accessKind )
     {
         if ( SecurityContext.IsSystem )
         {
@@ -31,7 +31,9 @@ public static class AccessGuard
         // Running them in a system scope avoids recursive checks.
         using ( SecurityContext.RunAsSystem() )
         {
-            isGranted = context.Policy.IsGranted( context.Subject, permission, securable );
+            // A grant of a member that is running (see GrantsPermissionsAttribute) takes precedence over the policy.
+            isGranted = SecurityContext.IsGranted( securable, permission )
+                        || context.Policy.IsGranted( context.Subject, permission, securable );
             record = new AccessRecord( context.Subject, permission, SecurityLabel.Of( securable ), member, accessKind );
         }
 
@@ -57,7 +59,7 @@ public static class AccessGuard
     /// <param name="permission">The permission of the operation.</param>
     /// <param name="member">The name of the member being accessed.</param>
     /// <param name="reason">The reason of the denial, included in the exception message.</param>
-    public static void Deny( object securable, string permission, string member, string reason )
+    public static void Deny( ISecurable securable, string permission, string member, string reason )
     {
         var context = GetContext( member );
 

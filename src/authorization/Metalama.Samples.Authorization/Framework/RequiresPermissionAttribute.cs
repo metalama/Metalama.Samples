@@ -49,6 +49,9 @@ public sealed class RequiresPermissionAttribute : Aspect, IAspect<IMethod>, IAsp
     {
         builder.MustNotBeStatic();
 
+        // The permission is checked on the current instance, so it must be securable.
+        builder.DeclaringType().MustBeConvertibleTo( typeof(ISecurable) );
+
         // An abstract member has no body, but the aspect can still be put on it to secure all overrides.
         builder.ExceptForInheritance().MustNotBeAbstract();
     }
@@ -56,6 +59,7 @@ public sealed class RequiresPermissionAttribute : Aspect, IAspect<IMethod>, IAsp
     public void BuildEligibility( IEligibilityBuilder<IFieldOrProperty> builder )
     {
         builder.MustNotBeStatic();
+        builder.DeclaringType().MustBeConvertibleTo( typeof(ISecurable) );
         builder.ExceptForInheritance().MustNotBeAbstract();
     }
 
@@ -63,6 +67,9 @@ public sealed class RequiresPermissionAttribute : Aspect, IAspect<IMethod>, IAsp
     {
         builder.MustNotBeReturnParameter();
         builder.MustBeReadable();
+
+        // On an abstract or interface method, the aspect is only inherited by the implementations.
+        builder.DeclaringMember().ExceptForInheritance().MustNotBeAbstract();
 
         // Only a securable object can be checked: passing any other object would always be denied.
         builder.Type().MustBeConvertibleTo( typeof(ISecurable) );
@@ -114,9 +121,9 @@ public sealed class RequiresPermissionAttribute : Aspect, IAspect<IMethod>, IAsp
 
                 propertyName = target.Name,
 
-                // The getter sets the owner of the guarded list that the property returns, so that each change of the
+                // The getter sets the owner of the securable list that the property returns, so that each change of the
                 // list demands the write permission.
-                guardCollection = collectionKind == CollectionKind.Guarded
+                secureCollection = collectionKind == CollectionKind.Securable
             } );
     }
 
@@ -164,13 +171,13 @@ public sealed class RequiresPermissionAttribute : Aspect, IAspect<IMethod>, IAsp
         [CompileTime] string writePermission,
         [CompileTime] string member,
         [CompileTime] string propertyName,
-        [CompileTime] bool guardCollection )
+        [CompileTime] bool secureCollection )
     {
         AccessGuard.Demand( meta.This, readPermission, member, AccessKind.Read );
 
-        if ( guardCollection )
+        if ( secureCollection )
         {
-            return GuardedCollection.SetOwner( meta.Proceed(), meta.This, writePermission, member, propertyName );
+            return SecurableCollection.SetOwner( meta.Proceed(), meta.This, writePermission, member, propertyName );
         }
 
         return meta.Proceed();
@@ -183,7 +190,7 @@ public sealed class RequiresPermissionAttribute : Aspect, IAspect<IMethod>, IAsp
         [CompileTime] string writePermission,
         [CompileTime] string member,
         [CompileTime] string propertyName,
-        [CompileTime] bool guardCollection )
+        [CompileTime] bool secureCollection )
     {
         AccessGuard.Demand( meta.This, writePermission, member, AccessKind.Write );
         meta.Proceed();
@@ -194,7 +201,7 @@ public sealed class RequiresPermissionAttribute : Aspect, IAspect<IMethod>, IAsp
     {
         // A null argument has nothing to secure; nullability is a separate concern. Testing a copy
         // instead of the parameter keeps the parameter's nullable state intact for the rest of the method.
-        object? argument = value;
+        ISecurable? argument = value;
 
         if ( argument != null )
         {

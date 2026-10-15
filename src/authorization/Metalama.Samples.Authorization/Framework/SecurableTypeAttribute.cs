@@ -5,8 +5,16 @@ using Metalama.Framework.Diagnostics;
 using Metalama.Framework.Eligibility;
 using Metalama.Samples.Authorization;
 
-// SecurableType adds RequiresPermission aspects, so RequiresPermission must be processed after it.
-[assembly: AspectOrder( AspectOrderDirection.RunTime, typeof(RequiresPermissionAttribute), typeof(SecurableTypeAttribute) )]
+// The order of execution at run time, from the outermost aspect to the innermost:
+// - RequiresPermission checks the permission of the member before anything else runs.
+// - GrantsPermissions grants permissions only after this check has passed, so the grant cannot satisfy it.
+// - SecurableType adds RequiresPermission aspects, so it must be processed first at build time, which is the
+//   reverse of the run-time order.
+[assembly: AspectOrder(
+    AspectOrderDirection.RunTime,
+    typeof(RequiresPermissionAttribute),
+    typeof(GrantsPermissionsAttribute),
+    typeof(SecurableTypeAttribute) )]
 
 namespace Metalama.Samples.Authorization;
 
@@ -45,13 +53,17 @@ public sealed class SecurableTypeAttribute : TypeAspect
     private static readonly DiagnosticDefinition<(IDeclaration Member, IType Type)> _mutableCollectionWarning = new(
         "AUTH003",
         Severity.Warning,
-        "'{0}' returns the collection type '{1}', which the getter cannot guard: a caller who can read it may change its " +
+        "'{0}' returns the collection type '{1}', which the getter cannot secure: a caller who can read it may change its " +
         "content without the write permission. Declare it as IList<T>, ICollection<T>, IReadOnlyList<T>, " +
-        "IReadOnlyCollection<T> or IEnumerable<T>, initialized with a GuardedList<T>, or as an immutable type." );
+        "IReadOnlyCollection<T> or IEnumerable<T>, initialized with a SecurableList<T>, or as an immutable type." );
 
     // On an interface, the aspect does nothing itself: it is inherited by the classes that implement the interface.
+    // The aspect is useful only on a securable type: the checks are made on the current instance.
     public override void BuildEligibility( IEligibilityBuilder<INamedType> builder )
-        => builder.ExceptForInheritance().MustNotBeInterface();
+    {
+        builder.ExceptForInheritance().MustNotBeInterface();
+        builder.MustSatisfy( type => type.IsConvertibleTo( typeof(ISecurable) ), type => $"{type} must implement ISecurable" );
+    }
 
     public override void BuildAspect( IAspectBuilder<INamedType> builder )
     {
@@ -140,7 +152,7 @@ public sealed class SecurableTypeAttribute : TypeAspect
         }
 
         // A secured getter protects the reference, not the content of a mutable collection.
-        if ( member is IFieldOrProperty { Type: var type } && CollectionTypes.Classify( type ) == CollectionKind.Unguarded )
+        if ( member is IFieldOrProperty { Type: var type } && CollectionTypes.Classify( type ) == CollectionKind.Unsecurable )
         {
             context.Diagnostics.Report( _mutableCollectionWarning.WithArguments( (member, type) ) );
         }

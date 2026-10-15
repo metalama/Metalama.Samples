@@ -1,8 +1,7 @@
 namespace Metalama.Samples.Authorization.Tests.Options_TypeAttribute;
 
-[SecurableType]
 [AuthorizationOptions( DefaultWritePermission = "Approve" )]
-public class Customer
+public class Customer : ISecurable
 {
     // Write requires Approve, from the type-level option.
     public decimal CreditLimit { get; set; }

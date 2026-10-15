@@ -1,6 +1,6 @@
 namespace Metalama.Samples.Authorization.Tests.Property;
 
-public class Document
+public class Document : ISecurable
 {
     // Different permissions for reading and writing.
     [RequiresPermission( "Read", "Approve" )]

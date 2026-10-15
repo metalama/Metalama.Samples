@@ -41,7 +41,7 @@ public class StructuralRulesTests : IAsyncLifetime
     }
 
     [Fact]
-    public void InvoiceLines_AreTheGuardedListOfTheInvoice()
+    public void InvoiceLines_AreTheSecurableListOfTheInvoice()
     {
         using ( this._org.SignIn( this._org.Ada ) )
         {
@@ -49,7 +49,7 @@ public class StructuralRulesTests : IAsyncLifetime
 
             // The property returns the list itself, the same instance each time, owned by the invoice.
             Assert.Same( lines, this._org.SalesInvoice.Lines );
-            Assert.Same( this._org.SalesInvoice, Assert.IsType<GuardedList<InvoiceLine>>( lines ).Owner );
+            Assert.Same( this._org.SalesInvoice, Assert.IsType<SecurableList<InvoiceLine>>( lines ).Owner );
 
             // Ada can read the lines, but changing them requires Write.
             Assert.Throws<AccessDeniedException>( () => lines.Add( new InvoiceLine( "Gift", 1, 1_000 ) ) );

@@ -1,6 +1,6 @@
 namespace Metalama.Samples.Authorization.Tests.AsyncMethod;
 
-public class Document
+public class Document : ISecurable
 {
     // The check runs at the start of the async method, so a denial faults the returned task.
     [RequiresPermission( "Send" )]

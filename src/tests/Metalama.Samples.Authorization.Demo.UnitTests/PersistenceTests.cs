@@ -248,13 +248,13 @@ public class PersistenceTests : IAsyncLifetime
             Assert.Equal( "Fabrikam", reloaded.Fabrikam.Name );
             Assert.Equal( 2026, reloaded.SalesBudget.FiscalYear );
             Assert.Equal( 2, reloaded.SalesInvoice.Lines.Count );
-            Assert.IsType<GuardedList<InvoiceLine>>( reloaded.SalesInvoice.Lines );
-            Assert.IsType<GuardedList<string>>( reloaded.SalesInvoice.Notes );
+            Assert.IsType<SecurableList<InvoiceLine>>( reloaded.SalesInvoice.Lines );
+            Assert.IsType<SecurableList<string>>( reloaded.SalesInvoice.Notes );
         }
     }
 
     [Fact]
-    public async Task LinesAddedThroughTheGuardedList_ArePersisted()
+    public async Task LinesAddedThroughTheSecurableList_ArePersisted()
     {
         using ( this._org.SignIn( this._org.Sam ) )
         {

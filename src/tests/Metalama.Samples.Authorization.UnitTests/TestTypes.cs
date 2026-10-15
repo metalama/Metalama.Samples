@@ -13,13 +13,13 @@ public class Folder : InMemoryRoleBasedSecurable
     [RequiresPermission( PermissionNames.Read, PermissionNames.Write )]
     public string? Title { get; set; }
 
-    // The getter sets the owner of the guarded list on the first access.
+    // The getter sets the owner of the securable list on the first access.
     [RequiresPermission( PermissionNames.Read, PermissionNames.Write )]
-    public IList<string> Tags { get; } = new GuardedList<string>();
+    public IList<string> Tags { get; } = new SecurableList<string>();
 
-    // A read-only type is guarded too: casting it back to IList<T> does not bypass the check.
+    // A read-only type is secured too: casting it back to IList<T> does not bypass the check.
     [RequiresPermission( PermissionNames.Read, PermissionNames.Write )]
-    public IReadOnlyList<string> History { get; } = new GuardedList<string>();
+    public IReadOnlyList<string> History { get; } = new SecurableList<string>();
 
     // A sequence that is not a collection is returned as it is.
     [RequiresPermission( PermissionNames.Read )]
@@ -57,13 +57,54 @@ public sealed class Report : InMemoryRoleBasedSecurable
 
     public void SetDraftNotes( string notes ) => this._draftNotes = notes;
 
+    // An aggregate that grants Read on the report while it runs: the subject needs Summarize only.
+    [RequiresPermission( "Summarize" )]
+    [GrantsPermissions( PermissionNames.Read )]
+    public int GrantedBodyLength => this.Body?.Length ?? 0;
+
+    // The grant covers the continuations of an async member.
+    [RequiresPermission( "Summarize" )]
+    [GrantsPermissions( PermissionNames.Read )]
+    public async Task<int> GetBodyLengthAsync()
+    {
+        await Task.Yield();
+
+        return this.Body?.Length ?? 0;
+    }
+
+    // The grant applies to this report, not to the other one.
+    [RequiresPermission( "Summarize" )]
+    [GrantsPermissions( PermissionNames.Read )]
+    public int CompareLength( Report other ) => (this.Body?.Length ?? 0) - (other.Body?.Length ?? 0);
+
+    // The grant applies to the current context, not to another one.
+    [RequiresPermission( "Summarize" )]
+    [GrantsPermissions( PermissionNames.Read )]
+    public string? ReadBodyAs( ISecurityContext context )
+    {
+        using ( SecurityContext.Use( context ) )
+        {
+            return this.Body;
+        }
+    }
+
+    // A grant cannot satisfy the check of its own member.
+    [RequiresPermission( "Summarize" )]
+    [GrantsPermissions( "Summarize" )]
+    public int SelfGranted => 0;
+
+    // A method that grants both permissions of the property it reads and writes.
+    [RequiresPermission( "Publish" )]
+    [GrantsPermissions( PermissionNames.Read, PermissionNames.Write )]
+    public void PublishWithGrant() => this.Body = this.Body + " (published)";
+
     protected override IRoleBasedSecurable? SecurityParent => null;
 }
 
 /// <summary>
 /// A folder that returns an ordinary list from a secured property: the getter fails closed.
 /// </summary>
-public sealed class UnguardedFolder : InMemoryRoleBasedSecurable
+public sealed class MutableListFolder : InMemoryRoleBasedSecurable
 {
     [RequiresPermission( PermissionNames.Read, PermissionNames.Write )]
     public IList<string> Tags { get; } = new List<string>();
@@ -74,20 +115,23 @@ public sealed class UnguardedFolder : InMemoryRoleBasedSecurable
 /// <summary>
 /// A folder that refuses changes of its tags once it is archived, through the owner hook.
 /// </summary>
-public sealed class ArchivableFolder : InMemoryRoleBasedSecurable, IGuardedCollectionOwner
+public sealed class ArchivableFolder : InMemoryRoleBasedSecurable, ISecurableCollectionOwner
 {
     [RequiresPermission( PermissionNames.Read, PermissionNames.Write )]
-    public IList<string> Tags { get; } = new GuardedList<string>();
+    public IList<string> Tags { get; } = new SecurableList<string>();
 
     public bool IsArchived { get; set; }
 
     public List<string> ChangedProperties { get; } = [];
 
+    public List<AccessKind> ChangeKinds { get; } = [];
+
     protected override IRoleBasedSecurable? SecurityParent => null;
 
-    void IGuardedCollectionOwner.OnCollectionChanging( string propertyName )
+    void ISecurableCollectionOwner.OnCollectionChanging( string propertyName, AccessKind accessKind )
     {
         this.ChangedProperties.Add( propertyName );
+        this.ChangeKinds.Add( accessKind );
 
         if ( this.IsArchived )
         {
@@ -131,7 +175,8 @@ public sealed class ExternalSecurable( ISubject editor ) : IRoleBasedSecurable
 
 public interface IFolder;
 
-public class NotSecurable;
+// A securable object that the role-based policy does not know how to secure.
+public class NotRoleBased : ISecurable;
 
 public static class TestRoles
 {
@@ -149,7 +194,7 @@ public sealed class ProbePolicy : IAuthorizationPolicy
 {
     public bool WasSystemWhileEvaluating { get; private set; }
 
-    public bool IsGranted( ISubject subject, Permission permission, object securable )
+    public bool IsGranted( ISubject subject, Permission permission, ISecurable securable )
     {
         this.WasSystemWhileEvaluating = SecurityContext.IsSystem;
 

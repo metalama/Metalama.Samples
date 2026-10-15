@@ -6,6 +6,11 @@ namespace Metalama.Samples.Authorization.RoleBased;
 public enum PermissionEffect
 {
     /// <summary>
+    /// The rule has no effect. It is the default value, so an uninitialized rule never allows anything.
+    /// </summary>
+    None,
+
+    /// <summary>
     /// Members of the role have the permission, unless another rule denies it.
     /// </summary>
     Allow,

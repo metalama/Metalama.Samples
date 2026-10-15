@@ -1,8 +1,7 @@
 namespace Metalama.Samples.Authorization.Tests.Options_DefaultExecute;
 
-[SecurableType]
 [AuthorizationOptions( DefaultExecutePermission = "Edit" )]
-public class Document
+public class Document : ISecurable
 {
     private readonly List<string> _lines = [];
 

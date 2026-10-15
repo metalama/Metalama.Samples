@@ -1,7 +1,6 @@
 namespace Metalama.Samples.Authorization.Tests.DefaultPermissions;
 
-[SecurableType]
-public class Document
+public class Document : ISecurable
 {
     private string? _draft = "Draft";
 

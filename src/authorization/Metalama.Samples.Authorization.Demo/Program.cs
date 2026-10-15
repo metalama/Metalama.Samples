@@ -70,6 +70,8 @@ await Expect.DeniedAsync( "Mia moves the customer to Engineering", () => Custome
 
 Console.WriteLine( "Budgets: namespace-level options" );
 await Expect.DeniedAsync( "Sam reads the sales budget", () => BudgetsAsync( "Sam", s => s.GetRemainingAsync( "SAL", 2026 ) ) );
+await Expect.AllowedAsync( "Sam reads the status of the sales budget, granted by the aggregate", () => BudgetsAsync( "Sam", s => s.GetStatusAsync( "SAL", 2026 ) ) );
+await Expect.DeniedAsync( "Sam reads the status of the engineering budget", () => BudgetsAsync( "Sam", s => s.GetStatusAsync( "ENG", 2026 ) ) );
 await Expect.AllowedAsync( "Mia reads her department's budget", () => BudgetsAsync( "Mia", s => s.GetRemainingAsync( "SAL", 2026 ) ) );
 await Expect.DeniedAsync( "Mia reads the engineering budget", () => BudgetsAsync( "Mia", s => s.GetRemainingAsync( "ENG", 2026 ) ) );
 await Expect.DeniedAsync( "Mia increases her budget", () => BudgetsAsync( "Mia", s => s.AdjustAsync( "SAL", 2026, 10_000 ) ) );

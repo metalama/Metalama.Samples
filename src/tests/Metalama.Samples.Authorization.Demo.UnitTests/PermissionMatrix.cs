@@ -61,6 +61,12 @@ public static class PermissionMatrix
             Sam,
             Mia ),
         Op(
+            "INV-6: Send an approved sales invoice directly through the sender",
+            org => org.Outbox.SendAsync( org.SalesInvoice, CancellationToken.None ),
+            arrange: org => Approve( org ),
+            Sam,
+            Mia ),
+        Op(
             "INV-7: Record a payment on a sent sales invoice",
             org =>
             {
@@ -103,6 +109,8 @@ public static class PermissionMatrix
         // Budgets.
         Op( "BUD-1: Read the sales budget", org => _ = org.SalesBudget.Remaining, Mia, Ada, Otto, Grace ),
         Op( "BUD-1: Read the engineering budget", org => _ = org.EngineeringBudget.Remaining, Erin, Ada, Otto, Grace ),
+        Op( "BUD-3: Read the status of the sales budget", org => _ = org.SalesBudget.Status, Sam, Mia, Ada, Otto, Grace ),
+        Op( "BUD-3: Read the status of the engineering budget", org => _ = org.EngineeringBudget.Status, Tom, Erin, Ada, Otto, Grace ),
         Op( "BUD-2: Adjust the sales budget", org => org.SalesBudget.Adjust( 10_000 ), Ada ),
         Op( "BUD-2: Record spending on the engineering budget", org => org.EngineeringBudget.RecordSpending( 1_000 ), Ada ),
 

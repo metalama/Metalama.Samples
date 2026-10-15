@@ -1,6 +1,6 @@
 namespace Metalama.Samples.Authorization.Tests.Inheritance_Override;
 
-public class Document
+public class Document : ISecurable
 {
     [RequiresPermission( "Approve" )]
     public virtual void Approve() { }

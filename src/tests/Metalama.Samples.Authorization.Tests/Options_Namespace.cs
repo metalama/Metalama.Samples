@@ -9,8 +9,7 @@ namespace Metalama.Samples.Authorization.Tests.Options_Namespace
             => amender.SetOptions( new AuthorizationOptions { DefaultWritePermission = "Edit" } );
     }
 
-    [SecurableType]
-    public abstract class Entity
+    public abstract class Entity : ISecurable
     {
         public string? Name { get; set; }
     }

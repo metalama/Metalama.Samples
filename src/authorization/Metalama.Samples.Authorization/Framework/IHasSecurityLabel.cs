@@ -15,6 +15,6 @@ public interface IHasSecurityLabel
 
 internal static class SecurityLabel
 {
-    public static string Of( object securable )
+    public static string Of( ISecurable securable )
         => securable is IHasSecurityLabel labeled ? labeled.SecurityLabel : securable.GetType().Name;
 }

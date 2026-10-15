@@ -1,8 +1,7 @@
 namespace Metalama.Samples.Authorization.Tests.Options_NonPublic;
 
-[SecurableType]
 [AuthorizationOptions( SecureNonPublicMembers = true )]
-public class Document
+public class Document : ISecurable
 {
     internal string? InternalNotes { get; set; }
 

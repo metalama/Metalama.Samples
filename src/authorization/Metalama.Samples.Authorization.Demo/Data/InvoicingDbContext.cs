@@ -24,6 +24,8 @@ public sealed class InvoicingDbContext( DbContextOptions<InvoicingDbContext> opt
 
     public DbSet<Budget> Budgets => this.Set<Budget>();
 
+    public DbSet<PermissionRuleRecord> PermissionRules => this.Set<PermissionRuleRecord>();
+
     protected override void OnModelCreating( ModelBuilder modelBuilder )
     {
         // Entity Framework must never go through the secured accessors. Loading an object, detecting changes and
@@ -36,6 +38,9 @@ public sealed class InvoicingDbContext( DbContextOptions<InvoicingDbContext> opt
         // expose the state of an object, such as Invoice.Status, must be mapped explicitly, or they are not saved.
 
         modelBuilder.Entity<User>( user => user.HasIndex( u => u.Name ).IsUnique() );
+
+        // The rules of the policy are stored by name, and the effect as text, so that an administrator can read them.
+        modelBuilder.Entity<PermissionRuleRecord>( rule => rule.Property( r => r.Effect ).HasConversion<string>() );
 
         ConfigureSecurable<Company>( modelBuilder );
 
@@ -66,15 +71,15 @@ public sealed class InvoicingDbContext( DbContextOptions<InvoicingDbContext> opt
                     invoice.Ignore( i => i.Creator );
                     invoice.OwnsMany( i => i.Lines, line => UseSingleColumnKey( line ) );
                     // Entity Framework assigns a new collection when it loads a primitive collection. The converter
-                    // makes this collection a guarded list, as the constructor does.
+                    // makes this collection a securable list, as the constructor does.
                     invoice.Property( i => i.Notes )
                         .HasConversion(
                             notes => JsonSerializer.Serialize( notes, (JsonSerializerOptions?) null ),
-                            json => new GuardedList<string>( JsonSerializer.Deserialize<List<string>>( json, (JsonSerializerOptions?) null ) ?? new List<string>() ),
+                            json => new SecurableList<string>( JsonSerializer.Deserialize<List<string>>( json, (JsonSerializerOptions?) null ) ?? new List<string>() ),
                             new ValueComparer<IList<string>>(
                                 ( left, right ) => left!.SequenceEqual( right! ),
                                 notes => notes.Aggregate( 0, ( hash, note ) => HashCode.Combine( hash, note ) ),
-                                notes => new GuardedList<string>( notes ) ) );
+                                notes => new SecurableList<string>( notes ) ) );
                 } );
 
         ConfigureSecurable<Budget>( modelBuilder )

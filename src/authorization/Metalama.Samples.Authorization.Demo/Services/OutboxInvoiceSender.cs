@@ -22,7 +22,8 @@ public sealed class OutboxInvoiceSender : IInvoiceSender
 
     public Task SendAsync( Invoice invoice, CancellationToken cancellationToken )
     {
-        // These reads are secured: the user who sends the invoice must be able to read it and its customer.
+        // The invoice is readable because IInvoiceSender grants Read on it. The customer is another object: the user
+        // who sends the invoice must be able to read it.
         var message = new SentInvoice( invoice.Number, invoice.Customer.Email, invoice.Total );
 
         lock ( this._messages )

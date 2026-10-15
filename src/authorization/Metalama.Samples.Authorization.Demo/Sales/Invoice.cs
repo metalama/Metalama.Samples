@@ -11,9 +11,9 @@ namespace Metalama.Samples.Authorization.Demo.Sales;
 /// without an attribute need <c>Write</c>), and explicit <see cref="RequiresPermissionAttribute"/> attributes.</para>
 /// <para>Authorization answers "may this user do this?". Business rules, such as "an approved invoice cannot be
 /// edited", are a separate concern and are enforced by the methods themselves, and by
-/// <see cref="IGuardedCollectionOwner.OnCollectionChanging"/> for the lines.</para>
+/// <see cref="ISecurableCollectionOwner.OnCollectionChanging"/> for the lines.</para>
 /// </remarks>
-public sealed class Invoice : Entity, IGuardedCollectionOwner
+public sealed class Invoice : Entity, ISecurableCollectionOwner
 {
     private Department _department;
     private InvoiceStatus _status;
@@ -52,12 +52,12 @@ public sealed class Invoice : Entity, IGuardedCollectionOwner
 
     public InvoiceStatus Status => this._status;
 
-    public IList<InvoiceLine> Lines { get; } = new GuardedList<InvoiceLine>();
+    public IList<InvoiceLine> Lines { get; } = new SecurableList<InvoiceLine>();
 
     /// <summary>
     /// Gets the internal notes of the invoice. Unlike the lines, notes can change at any status.
     /// </summary>
-    public IList<string> Notes { get; } = new GuardedList<string>();
+    public IList<string> Notes { get; } = new SecurableList<string>();
 
     public decimal Total => this.Lines.Sum( l => l.Amount );
 
@@ -144,10 +144,10 @@ public sealed class Invoice : Entity, IGuardedCollectionOwner
         this._department = target;
     }
 
-    // The guarded lists call this method after they have checked the Write permission, before each change.
+    // The securable lists call this method after they have checked the Write permission, before each change.
     // The permission is already checked, so the method is excluded from default securing.
     [AuthorizationOptions( IsDefaultSecuringEnabled = false )]
-    void IGuardedCollectionOwner.OnCollectionChanging( string propertyName )
+    void ISecurableCollectionOwner.OnCollectionChanging( string propertyName, AccessKind accessKind )
     {
         if ( propertyName == nameof(this.Lines) )
         {

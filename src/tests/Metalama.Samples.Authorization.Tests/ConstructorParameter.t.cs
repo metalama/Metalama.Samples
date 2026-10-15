@@ -5,7 +5,7 @@ public class Document
   // Creating a document in a folder requires a permission on the folder.
   public Document([RequiresPermission("AddDocument")] Folder folder)
   {
-    object? argument = folder;
+    ISecurable? argument = folder;
     if (argument != null)
     {
       AccessGuard.Demand(argument, "AddDocument", "Document(folder)", AccessKind.Execute);

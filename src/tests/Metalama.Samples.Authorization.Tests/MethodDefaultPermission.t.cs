@@ -1,5 +1,5 @@
 namespace Metalama.Samples.Authorization.Tests.MethodDefaultPermission;
-public class Document
+public class Document : ISecurable
 {
   // Without arguments, a method requires the default execute permission, which is Write.
   [RequiresPermission]
@@ -8,8 +8,7 @@ public class Document
     AccessGuard.Demand(this, "Write", "Document.Archive", AccessKind.Execute);
   }
 }
-[SecurableType]
-public class Report
+public class Report : ISecurable
 {
   public void Refresh()
   {

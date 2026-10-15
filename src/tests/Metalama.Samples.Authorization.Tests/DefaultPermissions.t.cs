@@ -1,7 +1,6 @@
 // Warning AUTH002 on `Count`: `'Document.Count' is a static member of the secured type 'Document'. A static member has no instance on which to check a permission. Move it to another type, or exclude it explicitly with [AuthorizationOptions( IsDefaultSecuringEnabled = false )].`
 namespace Metalama.Samples.Authorization.Tests.DefaultPermissions;
-[SecurableType]
-public class Document
+public class Document : ISecurable
 {
   private string? _draft = "Draft";
   private string? _title;

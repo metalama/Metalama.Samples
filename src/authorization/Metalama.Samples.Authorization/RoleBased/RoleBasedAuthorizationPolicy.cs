@@ -25,7 +25,7 @@ public sealed class RoleBasedAuthorizationPolicy : IAuthorizationPolicy
     }
 
     /// <inheritdoc />
-    public bool IsGranted( ISubject subject, Permission permission, object securable )
+    public bool IsGranted( ISubject subject, Permission permission, ISecurable securable )
     {
         if ( securable is not IRoleBasedSecurable roleBasedSecurable )
         {
@@ -48,12 +48,16 @@ public sealed class RoleBasedAuthorizationPolicy : IAuthorizationPolicy
                     continue;
                 }
 
-                if ( rule.Effect == PermissionEffect.Deny )
+                switch ( rule.Effect )
                 {
-                    return false;
-                }
+                    case PermissionEffect.Deny:
+                        return false;
 
-                allowed = true;
+                    case PermissionEffect.Allow:
+                        allowed = true;
+
+                        break;
+                }
             }
         }
 
@@ -74,14 +78,30 @@ public sealed class RoleBasedAuthorizationPolicyBuilder
     /// <typeparamref name="T"/>. Use <c>object</c> for all classes.
     /// </summary>
     public RoleBasedAuthorizationPolicyBuilder Allow<T>( Permission permission, Role role )
-        => this.AddRule( typeof(T), new Rule( permission, role, PermissionEffect.Allow ) );
+        => this.Add( typeof(T), permission, role, PermissionEffect.Allow );
 
     /// <summary>
     /// Denies <paramref name="permission"/> on objects of class <typeparamref name="T"/> to members of
     /// <paramref name="role"/>, overriding any rule that allows it.
     /// </summary>
     public RoleBasedAuthorizationPolicyBuilder Deny<T>( Permission permission, Role role )
-        => this.AddRule( typeof(T), new Rule( permission, role, PermissionEffect.Deny ) );
+        => this.Add( typeof(T), permission, role, PermissionEffect.Deny );
+
+    /// <summary>
+    /// Adds a rule for objects of class <paramref name="type"/>. Use this method when the rules are data, for instance
+    /// rules loaded from a database.
+    /// </summary>
+    /// <exception cref="ArgumentException"><paramref name="type"/> is an interface, or <paramref name="effect"/> is
+    /// <see cref="PermissionEffect.None"/>.</exception>
+    public RoleBasedAuthorizationPolicyBuilder Add( Type type, Permission permission, Role role, PermissionEffect effect )
+    {
+        if ( effect is not (PermissionEffect.Allow or PermissionEffect.Deny) )
+        {
+            throw new ArgumentOutOfRangeException( nameof(effect), effect, "A rule must allow or deny." );
+        }
+
+        return this.AddRule( type, new Rule( permission, role, effect ) );
+    }
 
     public RoleBasedAuthorizationPolicy Build()
         => new( this._rules.ToFrozenDictionary( pair => pair.Key, pair => ImmutableArray.CreateRange( pair.Value ) ) );

@@ -38,4 +38,17 @@ public static class DemoRoles
     /// the creator never changes.
     /// </summary>
     public static Role Creator { get; } = Role.Computed( nameof(Creator) );
+
+    /// <summary>
+    /// Gets the role that has a given name, as the database stores it. A name that is not a computed role is an
+    /// assigned role: assigned roles are data, and an administrator can define new ones.
+    /// </summary>
+    public static Role FromName( string name )
+        => name switch
+        {
+            nameof(Role.Everyone) => Role.Everyone,
+            nameof(Role.Owner) => Role.Owner,
+            nameof(Creator) => Creator,
+            _ => new Role( name )
+        };
 }

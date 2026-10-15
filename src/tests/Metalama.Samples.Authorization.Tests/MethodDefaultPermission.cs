@@ -1,14 +1,13 @@
 namespace Metalama.Samples.Authorization.Tests.MethodDefaultPermission;
 
-public class Document
+public class Document : ISecurable
 {
     // Without arguments, a method requires the default execute permission, which is Write.
     [RequiresPermission]
     public void Archive() { }
 }
 
-[SecurableType]
-public class Report
+public class Report : ISecurable
 {
     public void Refresh() { }
 

@@ -1,7 +1,6 @@
 namespace Metalama.Samples.Authorization.Tests.Inheritance_DefaultOverride;
-[SecurableType]
 [AuthorizationOptions(DefaultExecutePermission = "Write")]
-public class Document
+public class Document : ISecurable
 {
   // Secured by default.
   public virtual void Archive()

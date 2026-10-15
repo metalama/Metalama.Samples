@@ -25,9 +25,9 @@ public static class ServiceCollectionExtensions
                     sqlite => sqlite.UseQuerySplittingBehavior( QuerySplittingBehavior.SplitQuery ) )
                 .AddInterceptors( SystemScopeMaterializationInterceptor.Instance ) );
 
-        // Security infrastructure. In a real application, the policy would load its rules from the database
-        // and be refreshed when an administrator changes them.
-        services.AddSingleton<IAuthorizationPolicy>( _ => DemoPolicy.Create() );
+        // Security infrastructure. The policy loads its rules from the database, see DemoData.
+        services.AddSingleton<DatabaseAuthorizationPolicy>();
+        services.AddSingleton<IAuthorizationPolicy>( provider => provider.GetRequiredService<DatabaseAuthorizationPolicy>() );
         services.AddSingleton<IAccessAuditor, LoggingAccessAuditor>();
         services.AddSingleton<RequestRunner>();
 

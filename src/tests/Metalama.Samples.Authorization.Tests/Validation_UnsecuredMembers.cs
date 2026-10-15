@@ -1,7 +1,6 @@
 namespace Metalama.Samples.Authorization.Tests.Validation_UnsecuredMembers;
 
-[SecurableType]
-public class Document
+public class Document : ISecurable
 {
     private readonly string[] _pages = ["Cover"];
 

@@ -13,5 +13,5 @@ public interface IAuthorizationPolicy
     /// The framework calls this method in a system scope (see <see cref="SecurityContext.RunAsSystem"/>), so the
     /// policy can read secured members of <paramref name="securable"/> without triggering checks recursively.
     /// </remarks>
-    bool IsGranted( ISubject subject, Permission permission, object securable );
+    bool IsGranted( ISubject subject, Permission permission, ISecurable securable );
 }

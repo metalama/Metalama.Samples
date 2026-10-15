@@ -10,7 +10,7 @@ public class RoleBasedPolicyTests
     private readonly TestUser _bob = new( "bob" );
 
     // The policy reads secured members such as Owner, so it is called in a system scope, as AccessGuard does.
-    private static bool IsGranted( IAuthorizationPolicy policy, ISubject subject, Permission permission, object securable )
+    private static bool IsGranted( IAuthorizationPolicy policy, ISubject subject, Permission permission, ISecurable securable )
     {
         using ( SecurityContext.RunAsSystem() )
         {
@@ -141,11 +141,11 @@ public class RoleBasedPolicyTests
     }
 
     [Fact]
-    public void NonSecurableObject_IsDenied()
+    public void ObjectWithoutRoles_IsDenied()
     {
         var policy = new RoleBasedAuthorizationPolicyBuilder().Allow<object>( Read, Role.Everyone ).Build();
 
-        Assert.False( IsGranted( policy, this._alice, Read, new NotSecurable() ) );
+        Assert.False( IsGranted( policy, this._alice, Read, new NotRoleBased() ) );
     }
 
     [Fact]

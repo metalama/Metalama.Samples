@@ -1,7 +1,6 @@
 namespace Metalama.Samples.Authorization.Tests.Options_OverridingMember;
-[SecurableType]
 [AuthorizationOptions(SecureNonPublicMembers = true)]
-public abstract class Entity
+public abstract class Entity : ISecurable
 {
   // Options are inherited by overriding members, so the override in Invoice is not secured either.
   [AuthorizationOptions(IsDefaultSecuringEnabled = false)]

@@ -19,6 +19,13 @@ public sealed class BudgetService( InvoicingDbContext db )
         return budget.Remaining;
     }
 
+    public async Task<BudgetStatus> GetStatusAsync( string departmentCode, int fiscalYear, CancellationToken cancellationToken = default )
+    {
+        var budget = await this.GetAsync( departmentCode, fiscalYear, cancellationToken );
+
+        return budget.Status;
+    }
+
     public async Task AdjustAsync( string departmentCode, int fiscalYear, decimal delta, CancellationToken cancellationToken = default )
     {
         var budget = await this.GetAsync( departmentCode, fiscalYear, cancellationToken );

@@ -1,5 +1,5 @@
 namespace Metalama.Samples.Authorization.Tests.Inheritance_Abstract;
-public abstract class Document
+public abstract class Document : ISecurable
 {
   // An abstract member has no body to check, but the aspect is inherited by all overrides.
   [RequiresPermission("Approve")]

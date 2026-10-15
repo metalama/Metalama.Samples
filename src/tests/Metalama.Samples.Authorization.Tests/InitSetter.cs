@@ -1,6 +1,6 @@
 namespace Metalama.Samples.Authorization.Tests.InitSetter;
 
-public class Document
+public class Document : ISecurable
 {
     // An init accessor is checked: an object initializer written by the caller is a write.
     [RequiresPermission( "Read", "Create" )]

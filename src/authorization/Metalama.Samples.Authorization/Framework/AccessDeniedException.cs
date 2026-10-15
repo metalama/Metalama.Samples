@@ -49,15 +49,18 @@ public sealed class AccessDeniedException : Exception
 
     private static string FormatMessage( AccessRecord record, string? reason )
     {
-        var verb = record.AccessKind switch
+        var operation = record.AccessKind switch
         {
-            AccessKind.Read => "read",
-            AccessKind.Write => "write",
-            _ => "execute"
+            AccessKind.Read => $"read {record.Member}",
+            AccessKind.Write => $"write {record.Member}",
+            AccessKind.Add => $"add an item to {record.Member}",
+            AccessKind.Remove => $"remove items from {record.Member}",
+            AccessKind.Replace => $"replace an item of {record.Member}",
+            _ => $"execute {record.Member}"
         };
 
         reason ??= $"'{record.Subject.Name}' does not have the {record.Permission} permission on {record.Securable}";
 
-        return $"Cannot {verb} {record.Member}: {reason}.";
+        return $"Cannot {operation}: {reason}.";
     }
 }

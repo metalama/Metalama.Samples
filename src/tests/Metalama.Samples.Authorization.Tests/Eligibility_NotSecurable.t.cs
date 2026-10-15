@@ -1,0 +1,3 @@
+// Error LAMA0037 on `RequiresPermission( "Read" )`: `The aspect 'RequiresPermission' cannot be applied to the property 'Document.Title' because the declaring type 'Document' must be convertible to 'ISecurable'.`
+// Error LAMA0037 on `RequiresPermission( "Approve" )`: `The aspect 'RequiresPermission' cannot be applied to the method 'Document.Approve()' because the declaring type 'Document' must be convertible to 'ISecurable'.`
+// Error LAMA0037 on `SecurableType`: `The aspect 'SecurableType' cannot be applied to the type 'Note' because 'Note' must implement ISecurable.`

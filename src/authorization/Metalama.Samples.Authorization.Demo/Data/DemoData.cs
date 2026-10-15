@@ -7,8 +7,8 @@ using static Metalama.Samples.Authorization.Demo.DemoRoles;
 namespace Metalama.Samples.Authorization.Demo.Data;
 
 /// <summary>
-/// Creates the database schema and the sample data: Contoso and its departments, people, customers, invoices
-/// and budgets.
+/// Creates the database schema and the sample data: the rules of the policy, Contoso and its departments, people,
+/// customers, invoices and budgets.
 /// </summary>
 public static class DemoData
 {
@@ -16,9 +16,14 @@ public static class DemoData
     {
         await using var scope = services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<InvoicingDbContext>();
-        var policy = scope.ServiceProvider.GetRequiredService<IAuthorizationPolicy>();
+        var policy = scope.ServiceProvider.GetRequiredService<DatabaseAuthorizationPolicy>();
 
         await db.Database.EnsureCreatedAsync( cancellationToken );
+
+        // The rules come first: the policy is needed to create the invoices.
+        db.PermissionRules.AddRange( DemoPolicy.CreateSeedRules() );
+        await db.SaveChangesAsync( cancellationToken );
+        await policy.ReloadAsync( db, cancellationToken );
 
         // Seeding is a trusted operation, like a database migration.
         using ( SecurityContext.RunAsSystem() )
