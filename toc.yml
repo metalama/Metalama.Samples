@@ -139,6 +139,15 @@ items:
               topicUid: sample-call-tracing-1
             - name: Step 2. Enabling tracing only in a trace build
               topicUid: sample-call-tracing-2
+        - name: Getting legacy code under test
+          topicUid: sample-legacy-testing
+          items:
+            - name: Step 1. Replacing hard-wired dependencies with fakes
+              topicUid: sample-legacy-testing-1
+            - name: Step 2. Recording real interactions
+              topicUid: sample-legacy-testing-2
+            - name: Step 3. Replaying interactions in characterization tests
+              topicUid: sample-legacy-testing-3
 
     - name: Shared Fabrics
       topicUid: sample-shared-fabric

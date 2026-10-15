@@ -6,7 +6,6 @@
 
         <IsPackable>false</IsPackable>
         <IsTestProject>true</IsTestProject>
-        <SampleProjectKind>Regular</SampleProjectKind>
     </PropertyGroup>
 
     <ItemGroup>
