@@ -18,7 +18,7 @@ using MetalamaDependencies = PostSharp.Engineering.BuildTools.Dependencies.Defin
 // PostSharp.Engineering names only released feature bands. Keep it equal to the constant of the same name in the
 // Metalama repository, and move both to MetalamaDependencies.Family.PreferredVersions.DotNetSdk once the .NET 11
 // SDK is released.
-const string dotNet11SdkVersion = "11.0.100-rc.1.26425.128";
+const string dotNet11SdkVersion = "11.0.100-rc.2.26504.105";
 
 // The .NET 10 SDK, which stays installed beside the .NET 11 one, because the build tool of this repository targets
 // net10.0 and the .NET 11 SDK carries no .NET 10 runtime. The version comes from the product family, so that it
