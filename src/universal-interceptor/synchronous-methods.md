@@ -79,8 +79,8 @@ The following project fabric redirects every call to the methods of `WeatherClie
 
 [!metalama-file weather-app/InterceptionFabric.cs]
 
-`RedirectToUniversalInterceptor` is a compile-time extension method of `IMethodResultFactory`, which this project
-defines. Its first argument is a type that implements `IUniversalInterceptor`, and the second argument is the name of
+`RedirectToUniversalInterceptor` is a compile-time extension method of `IMethodResultFactory`. It is defined in this
+project. Its first argument is a type that implements `IUniversalInterceptor`, and the second argument is the name of
 a static field or property of this type, which gives the instance. The `ForEachSite` call, the `RequestQuota` type and
 the type of `CallLog.Current` are explained in <xref:sample-universal-interceptor-4>.
 
@@ -124,7 +124,31 @@ bound to the receiver that it reads from the tuple:
 
 The templates generate the following interceptors for `GetTemperature` and `SetUnit`:
 
-GENERATED_SYNC
+```csharp
+internal static double WeatherClient_GetTemperature_Interceptor(WeatherClient receiver, string city)
+{
+    var args = (receiver, city);
+    var metadata = new InterceptionMetadata(typeof(WeatherClient), "GetTemperature", "WeatherClient.GetTemperature(string)", true);
+    IUniversalInterceptor interceptor = CallLog.Current.Value;
+    return (double)interceptor.Invoke(ref args, metadata, Proceed);
+    static double Proceed(ref (WeatherClient receiver, string city) receivedArgs)
+    {
+        return receivedArgs.receiver.GetTemperature(receivedArgs.city);
+    }
+}
+internal static void WeatherClient_SetUnit_Interceptor(WeatherClient receiver, TemperatureUnit unit)
+{
+    var args = (receiver, unit);
+    var metadata = new InterceptionMetadata(typeof(WeatherClient), "SetUnit", "WeatherClient.SetUnit(TemperatureUnit)", true);
+    IUniversalInterceptor interceptor = CallLog.Current.Value;
+    interceptor.Invoke(ref args, metadata, Proceed);
+    static ValueTuple Proceed(ref (WeatherClient receiver, TemperatureUnit unit) receivedArgs)
+    {
+        receivedArgs.receiver.SetUnit(receivedArgs.unit);
+        return default;
+    }
+}
+```
 
 The local function `Proceed` is static: it reads the receiver and the arguments from the tuple, not from the
 parameters of the generated method. The C# compiler therefore caches the delegate, and the call does not allocate

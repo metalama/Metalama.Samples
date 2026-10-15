@@ -151,12 +151,14 @@ items:
         - name: Universal interceptor
           topicUid: sample-universal-interceptor
           items:
-            - name: Step 1. Routing all calls to one object
+            - name: Step 1. Routing synchronous calls to one object
               topicUid: sample-universal-interceptor-1
-            - name: Step 2. Supporting ref, out and async methods
+            - name: Step 2. Handling async methods
               topicUid: sample-universal-interceptor-2
-            - name: Step 3. Replacing the interceptor per test
+            - name: Step 3. Handling ref and out parameters
               topicUid: sample-universal-interceptor-3
+            - name: Step 4. Putting it all together
+              topicUid: sample-universal-interceptor-4
 
     - name: Shared Fabrics
       topicUid: sample-shared-fabric
