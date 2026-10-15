@@ -19,7 +19,7 @@
          to the fakes. -->
     <ItemGroup>
         <ProjectReference Include="..\..\legacy-testing\legacy-testing-1\Metalama.Samples.LegacyTesting1.csproj"
-                          SetConfiguration="Configuration=Test"/>
+                          AdditionalProperties="Configuration=Test"/>
     </ItemGroup>
 
 </Project>

@@ -19,7 +19,7 @@
          interactions. -->
     <ItemGroup>
         <ProjectReference Include="..\..\legacy-testing\legacy-testing-3\Metalama.Samples.LegacyTesting3.csproj"
-                          SetConfiguration="Configuration=Test"/>
+                          AdditionalProperties="Configuration=Test"/>
     </ItemGroup>
 
     <ItemGroup>
