@@ -148,6 +148,15 @@ items:
               topicUid: sample-call-telemetry-2
             - name: Step 3. Recording metrics
               topicUid: sample-call-telemetry-3
+        - name: Universal interceptor
+          topicUid: sample-universal-interceptor
+          items:
+            - name: Step 1. Routing all calls to one object
+              topicUid: sample-universal-interceptor-1
+            - name: Step 2. Supporting ref, out and async methods
+              topicUid: sample-universal-interceptor-2
+            - name: Step 3. Replacing the interceptor per test
+              topicUid: sample-universal-interceptor-3
 
     - name: Shared Fabrics
       topicUid: sample-shared-fabric

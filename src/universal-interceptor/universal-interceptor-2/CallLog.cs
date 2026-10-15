@@ -15,14 +15,20 @@ public class CallLog : IUniversalInterceptor
         InterceptorDelegate<TArgs, TResult> proceed )
         where TArgs : struct, ITuple
     {
-        var call = FormatCall( args, metadata );
+        var arguments = FormatArguments( args, metadata );
+        var call = $"{metadata.DeclaringType.Name}.{metadata.MethodName}({arguments})";
 
         try
         {
             // The intercepted method writes its ref and out arguments to args.
             var result = proceed( ref args );
 
-            Console.WriteLine( $"[call] {call} {FormatResult( result )}, with the arguments ({FormatArguments( args, metadata )}) after the call." );
+            var argumentsAfterCall = FormatArguments( args, metadata );
+
+            Console.WriteLine(
+                argumentsAfterCall == arguments
+                    ? $"[call] {call} {FormatResult( result )}."
+                    : $"[call] {call} {FormatResult( result )}, and changed the arguments to ({argumentsAfterCall})." );
 
             return result;
         }
