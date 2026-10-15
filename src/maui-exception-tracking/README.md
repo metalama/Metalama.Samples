@@ -1,6 +1,18 @@
+---
+uid: sample-maui-exception-tracking
+summary: "This example tracks exceptions in a .NET MAUI application and records the visual element that caused each one, using markup extensions for commands and bindings and a Metalama aspect for code-behind event handlers."
+keywords: ".NET MAUI exception handling, visual context, MAUI command exception, value converter exception, event handler, aspect"
+created-date: 2025-12-11
+modified-date: 2026-10-15
+---
+
 # MAUI Exception Tracking with Visual Context
 
 This sample demonstrates how to implement comprehensive exception tracking in .NET MAUI applications with visual context awareness. When an exception occurs, the system captures which UI element caused it, even when exceptions occur in commands, bindings, or event handlers.
+
+Both projects of this example are part of `Metalama.Samples.sln`, like every other example. Building them requires the .NET MAUI workload, which you can install with `dotnet workload install maui-windows`. The example also keeps a smaller solution of its own, `Metalama.Samples.MauiExceptionTracking.sln`, which is convenient when you want to open this example alone.
+
+The demo application targets Windows only. Its other target frameworks are present but commented out in `Metalama.Samples.MauiExceptionTracking.Demo.csproj`.
 
 ## The Problem
 
@@ -168,10 +180,12 @@ public partial class MainPage : ContentPage
 
 | Method Type | Context Source | Exception Handling |
 |-------------|----------------|-------------------|
-| Event handlers (`void Method(object, EventArgs)`) | `sender` parameter (if `VisualElement`) | Swallowed |
+| Event handlers (`void` return, two parameters, second convertible to `EventArgs`) | first parameter (if `VisualElement`) | Swallowed |
 | Public instance methods | `this` (the `VisualElement` itself) | Rethrown (non-void) / Swallowed (void) |
 | Protected overrides of Microsoft framework methods | `this` | Rethrown (non-void) / Swallowed (void) |
 | Methods with `[EntryPoint]` | `this` | Rethrown (non-void) / Swallowed (void) |
+
+The detection of an event handler relies on the return type, the parameter count and the type of the second parameter. The type of the first parameter is not examined, so a two-parameter `void` method is treated as an event handler even when its first parameter is not `object`.
 
 **Design note on event handlers:** When an event handler receives a `sender` that is a `VisualElement`, the context is switched to the sender rather than `this`. This is because the sender is typically a child element (e.g., a Button) that triggered the event, and reporting exceptions against that element provides more precise diagnostic information.
 

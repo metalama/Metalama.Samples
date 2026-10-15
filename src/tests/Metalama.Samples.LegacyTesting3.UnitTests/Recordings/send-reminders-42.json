@@ -1,0 +1,68 @@
+[
+  {
+    "Method": "BillingDatabase.GetCustomerEmail",
+    "Arguments": [
+      42
+    ],
+    "Result": "customer42@example.com"
+  },
+  {
+    "Method": "BillingDatabase.GetOverdueInvoices",
+    "Arguments": [
+      42
+    ],
+    "Result": [
+      {
+        "Number": "INV-1001",
+        "Amount": 120.00,
+        "DaysOverdue": 12
+      },
+      {
+        "Number": "INV-1007",
+        "Amount": 45.50,
+        "DaysOverdue": 41
+      }
+    ]
+  },
+  {
+    "Method": "File.ReadAllText",
+    "Arguments": [
+      "reminder-template.txt"
+    ],
+    "Result": "Dear customer,\n\nInvoice {Number} is {DaysOverdue} days overdue. The amount due is {Amount} EUR.\n\nBilling department\n"
+  },
+  {
+    "Method": "SmtpClient.Send",
+    "Arguments": [
+      "billing@example.com",
+      "customer42@example.com",
+      "Payment reminder: invoice INV-1001",
+      "Dear customer,\n\nInvoice INV-1001 is 12 days overdue. The amount due is 120.00 EUR.\n\nBilling department\n"
+    ],
+    "Result": null
+  },
+  {
+    "Method": "Thread.Sleep",
+    "Arguments": [
+      1000
+    ],
+    "Result": null
+  },
+  {
+    "Method": "SmtpClient.Send",
+    "Arguments": [
+      "billing@example.com",
+      "customer42@example.com",
+      "Payment reminder: invoice INV-1007",
+      "Dear customer,\n\nInvoice INV-1007 is 41 days overdue. The amount due is 70.50 EUR.\n\nBilling department\n"
+    ],
+    "Result": null
+  },
+  {
+    "Method": "Thread.Sleep",
+    "Arguments": [
+      1000
+    ],
+    "Result": null
+  }
+]

@@ -1,0 +1,3 @@
+# Files that the programs of this series write when they run.
+outbox/
+interactions.json
