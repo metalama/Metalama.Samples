@@ -25,8 +25,8 @@
         <!-- HTML files are consumed by Metalama.Documentation. -->
         <MetalamaWriteHtml>True</MetalamaWriteHtml>
 
-        <!-- We want samples to be compatible with VS 2022. -->
-        <LangVersion>13.0</LangVersion>
+        <!-- The interceptor examples use C# 14 extension members such as meta.Interception. -->
+        <LangVersion>14.0</LangVersion>
         
         <!-- These properties are redundant with BuildOptions.props but this file is not imported on end-user machines 
              where global.json is not present.  -->

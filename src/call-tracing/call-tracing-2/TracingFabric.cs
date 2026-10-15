@@ -30,19 +30,17 @@ internal class TracingFabric : ProjectFabric
     [Template]
     public dynamic? Trace()
     {
-        // meta.Interception requires C# 14. With an earlier version of C#, use GetExtension.
-        var interception = meta.GetExtension<IInterceptionInfo>();
-        var interceptedMethod = interception.Method.InterceptedMethod;
+        var interceptedMethod = meta.Interception.Method.InterceptedMethod;
 
         // Build the description of the call: the caller, the called method, and the arguments.
         var arguments = new List<string>();
 
-        foreach ( var parameter in interception.Method.ArgumentParameters )
+        foreach ( var parameter in meta.Interception.Method.ArgumentParameters )
         {
             arguments.Add( $"{parameter.Name}: {parameter.Value}" );
         }
 
-        var call = $"{interception.CallingType!.Name}.{interception.CallingMember!.Name} -> "
+        var call = $"{meta.Interception.CallingType!.Name}.{meta.Interception.CallingMember!.Name} -> "
                    + $"{interceptedMethod.DeclaringType.Name}.{interceptedMethod.Name}"
                    + $"({string.Join( ", ", arguments )})";
 

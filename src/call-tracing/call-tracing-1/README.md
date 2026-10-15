@@ -49,8 +49,8 @@ The `AmendProject` method registers the interceptors with the `InterceptMethods`
   call, the call sites in different members share an interceptor, and the template cannot read the calling member.
 
 The `Trace` template is a T# template, like the templates of override aspects. It reads the description of the
-interception with `meta.GetExtension<IInterceptionInfo>()`. In a project that uses C# 14, you can write
-`meta.Interception` instead.
+interception with `meta.Interception`. This extension property requires C# 14. With an earlier version of C#, use
+`meta.GetExtension<IInterceptionInfo>()` instead.
 
 * `CallingType` and `CallingMember` give the caller.
 * `Method.InterceptedMethod` gives the method that the call site calls.
