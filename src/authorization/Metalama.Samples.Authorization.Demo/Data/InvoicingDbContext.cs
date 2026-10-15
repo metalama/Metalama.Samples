@@ -1,7 +1,9 @@
 using Metalama.Samples.Authorization.Demo.Finance;
 using Metalama.Samples.Authorization.Demo.Sales;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using System.Text.Json;
 
 namespace Metalama.Samples.Authorization.Demo.Data;
 
@@ -63,7 +65,16 @@ public sealed class InvoicingDbContext( DbContextOptions<InvoicingDbContext> opt
                     invoice.HasOne<User>( "CreatorUser" ).WithMany();
                     invoice.Ignore( i => i.Creator );
                     invoice.OwnsMany( i => i.Lines, line => UseSingleColumnKey( line ) );
-                    invoice.PrimitiveCollection( i => i.Notes );
+                    // Entity Framework assigns a new collection when it loads a primitive collection. The converter
+                    // makes this collection a guarded list, as the constructor does.
+                    invoice.Property( i => i.Notes )
+                        .HasConversion(
+                            notes => JsonSerializer.Serialize( notes, (JsonSerializerOptions?) null ),
+                            json => new GuardedList<string>( JsonSerializer.Deserialize<List<string>>( json, (JsonSerializerOptions?) null ) ?? new List<string>() ),
+                            new ValueComparer<IList<string>>(
+                                ( left, right ) => left!.SequenceEqual( right! ),
+                                notes => notes.Aggregate( 0, ( hash, note ) => HashCode.Combine( hash, note ) ),
+                                notes => new GuardedList<string>( notes ) ) );
                 } );
 
         ConfigureSecurable<Budget>( modelBuilder )

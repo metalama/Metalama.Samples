@@ -1,45 +1,73 @@
-// Warning AUTH003 on `Reviewers`: `'Document.Reviewers' exposes the mutable collection type 'List<string>': any caller who can read it can change its content without the write permission. Declare it as IList<T> or ICollection<T>, which the getter wraps in a guarded view, or as a read-only type.`
-// Warning AUTH003 on `Sections`: `'Document.Sections' exposes the mutable collection type 'string[]': any caller who can read it can change its content without the write permission. Declare it as IList<T> or ICollection<T>, which the getter wraps in a guarded view, or as a read-only type.`
-// Warning AUTH003 on `Metadata`: `'Document.Metadata' exposes the mutable collection type 'Dictionary<string, string>': any caller who can read it can change its content without the write permission. Declare it as IList<T> or ICollection<T>, which the getter wraps in a guarded view, or as a read-only type.`
+// Warning AUTH003 on `Approvers`: `'Document.Approvers' returns the collection type 'List<string>', which the getter cannot guard: a caller who can read it may change its content without the write permission. Declare it as IList<T>, ICollection<T>, IReadOnlyList<T>, IReadOnlyCollection<T> or IEnumerable<T>, initialized with a GuardedList<T>, or as an immutable type.`
+// Warning AUTH003 on `Sections`: `'Document.Sections' returns the collection type 'string[]', which the getter cannot guard: a caller who can read it may change its content without the write permission. Declare it as IList<T>, ICollection<T>, IReadOnlyList<T>, IReadOnlyCollection<T> or IEnumerable<T>, initialized with a GuardedList<T>, or as an immutable type.`
+// Warning AUTH003 on `Metadata`: `'Document.Metadata' returns the collection type 'Dictionary<string, string>', which the getter cannot guard: a caller who can read it may change its content without the write permission. Declare it as IList<T>, ICollection<T>, IReadOnlyList<T>, IReadOnlyCollection<T> or IEnumerable<T>, initialized with a GuardedList<T>, or as an immutable type.`
 using System.Collections.Immutable;
 namespace Metalama.Samples.Authorization.Tests.CollectionProperty;
 [ApplyDefaultPermissions]
 public class Document
 {
-  private readonly List<string> _authors = [];
-  private readonly IList<string> _tags = new List<string>();
-  // IList<T> and ICollection<T>: the getter returns a guarded view, so changing the content requires Write.
+  private readonly GuardedList<string> _authors = [];
+  private readonly IList<string> _tags = new GuardedList<string>();
+  // The getter sets the owner of the guarded list on the first access, so that changing the list requires Write.
   public IList<string> Tags
   {
     get
     {
       AccessGuard.Demand(this, "Read", "Document.Tags", AccessKind.Read);
-      return GuardedCollection.Wrap(_tags, this, "Write", "Document.Tags");
+      return GuardedCollection.SetOwner(_tags, this, "Write", "Document.Tags", "Tags");
     }
     private init
     {
       _tags = value;
     }
   }
+  private readonly ICollection<int> _pages = new GuardedList<int>();
   public ICollection<int> Pages
   {
     get
     {
       AccessGuard.Demand(this, "Read", "Document.Pages", AccessKind.Read);
-      return GuardedCollection.Wrap(Pages_Source, this, "Write", "Document.Pages");
+      return GuardedCollection.SetOwner(_pages, this, "Write", "Document.Pages", "Pages");
+    }
+    private init
+    {
+      _pages = value;
     }
   }
-  private ICollection<int> Pages_Source => this._pages;
-  private readonly List<int> _pages = [];
-  // Read-only types are returned as they are. The class must not return a mutable object behind them.
+  private readonly GuardedList<string> _reviewers = [];
+  // A property can also be declared with the guarded type.
+  public GuardedList<string> Reviewers
+  {
+    get
+    {
+      AccessGuard.Demand(this, "Read", "Document.Reviewers", AccessKind.Read);
+      return GuardedCollection.SetOwner(_reviewers, this, "Write", "Document.Reviewers", "Reviewers");
+    }
+    private init
+    {
+      _reviewers = value;
+    }
+  }
+  // A read-only type is guarded too: casting it back to IList<T> does not bypass the check.
   public IReadOnlyList<string> Authors
   {
     get
     {
       AccessGuard.Demand(this, "Read", "Document.Authors", AccessKind.Read);
-      return this._authors.AsReadOnly();
+      return GuardedCollection.SetOwner(Authors_Source, this, "Write", "Document.Authors", "Authors");
     }
   }
+  private IReadOnlyList<string> Authors_Source => this._authors;
+  // A sequence that is not a collection, and an immutable type, are returned as they are.
+  public IEnumerable<string> UpperTags
+  {
+    get
+    {
+      AccessGuard.Demand(this, "Read", "Document.UpperTags", AccessKind.Read);
+      return GuardedCollection.SetOwner(UpperTags_Source, this, "Write", "Document.UpperTags", "UpperTags");
+    }
+  }
+  private IEnumerable<string> UpperTags_Source => this.Tags.Select(t => t.ToUpperInvariant());
   private ImmutableArray<string> _keywords = [];
   public ImmutableArray<string> Keywords
   {
@@ -54,18 +82,18 @@ public class Document
       _keywords = value;
     }
   }
-  private readonly List<string> _reviewers = [];
-  // Mutable types that the view cannot replace: warning AUTH003.
-  public List<string> Reviewers
+  private readonly List<string> _approvers = [];
+  // Types that the getter cannot guard: warning AUTH003.
+  public List<string> Approvers
   {
     get
     {
-      AccessGuard.Demand(this, "Read", "Document.Reviewers", AccessKind.Read);
-      return _reviewers;
+      AccessGuard.Demand(this, "Read", "Document.Approvers", AccessKind.Read);
+      return _approvers;
     }
     private init
     {
-      _reviewers = value;
+      _approvers = value;
     }
   }
   private readonly string[] _sections = [];

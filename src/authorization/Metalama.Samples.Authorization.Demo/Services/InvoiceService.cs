@@ -33,7 +33,7 @@ public sealed class InvoiceService( InvoicingDbContext db, IInvoiceSender sender
         CancellationToken cancellationToken = default )
     {
         var invoice = await this.GetAsync( number, cancellationToken );
-        invoice.AddLine( description, quantity, unitPrice );
+        invoice.Lines.Add( new InvoiceLine( description, quantity, unitPrice ) );
         await db.SaveChangesAsync( cancellationToken );
     }
 

@@ -36,7 +36,7 @@ public class PersistenceTests : IAsyncLifetime
     {
         using ( SecurityContext.RunAsSystem() )
         {
-            this._org.SalesInvoice.AddLine( "Printing", 1, 60 );
+            this._org.SalesInvoice.Lines.Add( new InvoiceLine( "Printing", 1, 60 ) );
             this._org.Fabrikam.CreditLimit = 60_000;
         }
 
@@ -231,6 +231,43 @@ public class PersistenceTests : IAsyncLifetime
         using ( SecurityContext.RunAsSystem() )
         {
             Assert.Equal( ["Call back on Monday"], reloaded.SalesInvoice.Notes );
+        }
+    }
+
+    [Fact]
+    public async Task Materialization_CreatesEntitiesInASystemScope_AndKeepsAllValues()
+    {
+        // The interceptor creates each entity with its parameterless constructor, in a system scope, so constructors
+        // can set secured properties. Entity Framework then sets every value through the backing fields.
+        await using var reloaded = await this._org.ReloadAsync();
+
+        using ( SecurityContext.RunAsSystem() )
+        {
+            Assert.Equal( "Contoso", reloaded.Contoso.Name );
+            Assert.Equal( ("SAL", "Sales"), (reloaded.Sales.Code, reloaded.Sales.Name) );
+            Assert.Equal( "Fabrikam", reloaded.Fabrikam.Name );
+            Assert.Equal( 2026, reloaded.SalesBudget.FiscalYear );
+            Assert.Equal( 2, reloaded.SalesInvoice.Lines.Count );
+            Assert.IsType<GuardedList<InvoiceLine>>( reloaded.SalesInvoice.Lines );
+            Assert.IsType<GuardedList<string>>( reloaded.SalesInvoice.Notes );
+        }
+    }
+
+    [Fact]
+    public async Task LinesAddedThroughTheGuardedList_ArePersisted()
+    {
+        using ( this._org.SignIn( this._org.Sam ) )
+        {
+            this._org.SalesInvoice.Lines.Add( new InvoiceLine( "Printing", 1, 60 ) );
+            await this._org.SaveChangesAsync();
+        }
+
+        await using var reloaded = await this._org.ReloadAsync();
+
+        using ( SecurityContext.RunAsSystem() )
+        {
+            Assert.Equal( 3, reloaded.SalesInvoice.Lines.Count );
+            Assert.Equal( 12_400m, reloaded.SalesInvoice.Total );
         }
     }
 }

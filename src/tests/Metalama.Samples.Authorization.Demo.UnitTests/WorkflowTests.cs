@@ -36,7 +36,7 @@ public class WorkflowTests : IAsyncLifetime
             () =>
             {
                 invoice = this._org.Sales.CreateInvoice( this._org.Fabrikam );
-                invoice.AddLine( "Consulting", 5, 1_000 );
+                invoice.Lines.Add( new InvoiceLine( "Consulting", 5, 1_000 ) );
             } );
 
         this.As( this._org.Mia, invoice.Approve );
@@ -83,7 +83,7 @@ public class WorkflowTests : IAsyncLifetime
             () =>
             {
                 invoice = this._org.Sales.CreateInvoice( this._org.Fabrikam );
-                invoice.AddLine( "Training", 1, 900 );
+                invoice.Lines.Add( new InvoiceLine( "Training", 1, 900 ) );
             } );
 
         this.Denied( this._org.Mia, invoice.Approve );
@@ -94,7 +94,7 @@ public class WorkflowTests : IAsyncLifetime
     {
         this.As( this._org.Mia, this._org.SalesInvoice.Approve );
 
-        this.As( this._org.Mia, () => Assert.Throws<InvalidOperationException>( () => this._org.SalesInvoice.AddLine( "Extra", 1, 1 ) ) );
+        this.As( this._org.Mia, () => Assert.Throws<InvalidOperationException>( () => this._org.SalesInvoice.Lines.Add( new InvoiceLine( "Extra", 1, 1 ) ) ) );
     }
 
     [Fact]
@@ -167,7 +167,7 @@ public class WorkflowTests : IAsyncLifetime
         this.As( this._org.Mia, () => this._org.SalesInvoice.Owner = this._org.Vera );
 
         // Vera has no role, but the owner of an invoice reads and edits it.
-        this.As( this._org.Vera, () => this._org.SalesInvoice.AddLine( "Expedite", 1, 50 ) );
+        this.As( this._org.Vera, () => this._org.SalesInvoice.Lines.Add( new InvoiceLine( "Expedite", 1, 50 ) ) );
 
         // A manager cannot change the owner of an invoice of a department she does not manage.
         this.Denied( this._org.Mia, () => this._org.EngineeringInvoice.Owner = this._org.Mia );
@@ -180,7 +180,7 @@ public class WorkflowTests : IAsyncLifetime
 
         this.Denied( nina, () => _ = this._org.SalesInvoice.Total );
         this.As( this._org.Mia, () => this._org.Sales.AssignRole( nina, DemoRoles.DepartmentAssistant ) );
-        this.As( nina, () => this._org.SalesInvoice.AddLine( "Binding", 1, 20 ) );
+        this.As( nina, () => this._org.SalesInvoice.Lines.Add( new InvoiceLine( "Binding", 1, 20 ) ) );
     }
 
     [Fact]
@@ -210,9 +210,9 @@ public class WorkflowTests : IAsyncLifetime
     [Fact]
     public void AuditorRole_AddedToAManager_RemovesTheirWriteAccess()
     {
-        this.As( this._org.Erin, () => this._org.EngineeringInvoice.AddLine( "Review", 1, 10 ) );
+        this.As( this._org.Erin, () => this._org.EngineeringInvoice.Lines.Add( new InvoiceLine( "Review", 1, 10 ) ) );
         this.As( this._org.Alice, () => this._org.Contoso.AssignRole( this._org.Erin, DemoRoles.Auditor ) );
-        this.Denied( this._org.Erin, () => this._org.EngineeringInvoice.AddLine( "Review", 1, 10 ) );
+        this.Denied( this._org.Erin, () => this._org.EngineeringInvoice.Lines.Add( new InvoiceLine( "Review", 1, 10 ) ) );
     }
 
     [Fact]
@@ -225,7 +225,7 @@ public class WorkflowTests : IAsyncLifetime
             () =>
             {
                 invoice = this._org.Sales.CreateInvoice( this._org.Fabrikam );
-                invoice.AddLine( "Training", 1, 900 );
+                invoice.Lines.Add( new InvoiceLine( "Training", 1, 900 ) );
 
                 // Mia gives the invoice to Sam, so she is no longer the owner, but she remains the creator.
                 invoice.Owner = this._org.Sam;

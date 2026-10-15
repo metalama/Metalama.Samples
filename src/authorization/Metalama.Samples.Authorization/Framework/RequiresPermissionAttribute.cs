@@ -103,6 +103,8 @@ public sealed class RequiresPermissionAttribute : Aspect, IAspect<IMethod>, IAsp
             return;
         }
 
+        var collectionKind = CollectionTypes.Classify( target.Type );
+
         builder.OverrideAccessors(
             secureGetter ? (GetterTemplateSelector) nameof(this.GetTemplate) : default,
             secureSetter ? nameof(this.SetTemplate) : null,
@@ -112,8 +114,11 @@ public sealed class RequiresPermissionAttribute : Aspect, IAspect<IMethod>, IAsp
                 writePermission,
                 member = GetMemberName( target ),
 
-                // A list returned by a secured getter is wrapped, so that changing it demands the write permission.
-                wrapCollection = CollectionTypes.Classify( target.Type ) == CollectionKind.Wrappable
+                propertyName = target.Name,
+
+                // The getter sets the owner of the guarded list that the property returns, so that each change of the
+                // list demands the write permission.
+                guardCollection = collectionKind == CollectionKind.Guarded
             } );
     }
 
@@ -160,13 +165,14 @@ public sealed class RequiresPermissionAttribute : Aspect, IAspect<IMethod>, IAsp
         [CompileTime] string readPermission,
         [CompileTime] string writePermission,
         [CompileTime] string member,
-        [CompileTime] bool wrapCollection )
+        [CompileTime] string propertyName,
+        [CompileTime] bool guardCollection )
     {
         AccessGuard.Demand( meta.This, readPermission, member, AccessKind.Read );
 
-        if ( wrapCollection )
+        if ( guardCollection )
         {
-            return GuardedCollection.Wrap( meta.Proceed(), meta.This, writePermission, member );
+            return GuardedCollection.SetOwner( meta.Proceed(), meta.This, writePermission, member, propertyName );
         }
 
         return meta.Proceed();
@@ -178,7 +184,8 @@ public sealed class RequiresPermissionAttribute : Aspect, IAspect<IMethod>, IAsp
         [CompileTime] string readPermission,
         [CompileTime] string writePermission,
         [CompileTime] string member,
-        [CompileTime] bool wrapCollection )
+        [CompileTime] string propertyName,
+        [CompileTime] bool guardCollection )
     {
         AccessGuard.Demand( meta.This, writePermission, member, AccessKind.Write );
         meta.Proceed();

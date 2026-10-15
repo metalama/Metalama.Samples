@@ -7,6 +7,9 @@ namespace Metalama.Samples.Authorization.Demo;
 /// </summary>
 public sealed class Company( string name ) : Entity
 {
+    // Used by Entity Framework, which creates entities in a system scope.
+    private Company() : this( null! ) { }
+
     // Init-only: the application cannot rename the company, whatever the rules of the policy.
     public string Name { get; init; } = name;
 

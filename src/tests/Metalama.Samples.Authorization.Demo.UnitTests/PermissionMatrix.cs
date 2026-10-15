@@ -1,3 +1,4 @@
+using Metalama.Samples.Authorization.Demo.Sales;
 using Metalama.Samples.Authorization.Demo.Services;
 using static Metalama.Samples.Authorization.Demo.UnitTests.Actor;
 
@@ -36,10 +37,10 @@ public static class PermissionMatrix
         Op( "INV-3: Create a marketing invoice", org => org.Marketing.CreateInvoice( org.Fabrikam ), Mia ),
         Op( "INV-3: Create an engineering invoice", org => org.Engineering.CreateInvoice( org.Northwind ), Tom, Erin ),
         Op( "INV-3: Create an invoice for the customer of another department", org => org.Engineering.CreateInvoice( org.Fabrikam ) ),
-        Op( "INV-4: Add a line to a sales invoice", org => org.SalesInvoice.AddLine( "Printing", 1, 60 ), Sam, Mia ),
-        Op( "INV-4: Remove a line from a sales invoice", org => org.SalesInvoice.RemoveLine( 0 ), Sam, Mia ),
+        Op( "INV-4: Add a line to a sales invoice", org => org.SalesInvoice.Lines.Add( new InvoiceLine( "Printing", 1, 60 ) ), Sam, Mia ),
+        Op( "INV-4: Remove a line from a sales invoice", org => org.SalesInvoice.Lines.RemoveAt( 0 ), Sam, Mia ),
         Op( "INV-4: Change the due date of a sales invoice", org => org.SalesInvoice.DueDate = new DateOnly( 2026, 12, 31 ), Sam, Mia ),
-        Op( "INV-4: Add a line to an engineering invoice", org => org.EngineeringInvoice.AddLine( "Testing", 1, 500 ), Tom, Erin ),
+        Op( "INV-4: Add a line to an engineering invoice", org => org.EngineeringInvoice.Lines.Add( new InvoiceLine( "Testing", 1, 500 ) ), Tom, Erin ),
         Op( "INV-4: Bill a sales invoice to a customer of the department", org => org.SalesInvoice.ChangeCustomer( org.Fabrikam ), Sam, Mia ),
         Op( "INV-4: Bill a sales invoice to a customer of another department", org => org.SalesInvoice.ChangeCustomer( org.Northwind ) ),
 

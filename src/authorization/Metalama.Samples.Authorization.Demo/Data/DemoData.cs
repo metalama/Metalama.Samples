@@ -71,14 +71,14 @@ public static class DemoData
 
         // Each invoice is created by its department's staff, who becomes its owner.
         var salesInvoice = CreateInvoice( sales, fabrikam, sam, policy );
-        salesInvoice.AddLine( "Consulting, March", 10, 1_200 );
-        salesInvoice.AddLine( "Travel expenses", 1, 340 );
+        salesInvoice.Lines.Add( new InvoiceLine( "Consulting, March", 10, 1_200 ) );
+        salesInvoice.Lines.Add( new InvoiceLine( "Travel expenses", 1, 340 ) );
 
         var marketingInvoice = CreateInvoice( marketing, fabrikam, mia, policy );
-        marketingInvoice.AddLine( "Trade fair booth", 1, 4_500 );
+        marketingInvoice.Lines.Add( new InvoiceLine( "Trade fair booth", 1, 4_500 ) );
 
         var engineeringInvoice = CreateInvoice( engineering, northwind, tom, policy );
-        engineeringInvoice.AddLine( "Prototype", 1, 8_000 );
+        engineeringInvoice.Lines.Add( new InvoiceLine( "Prototype", 1, 8_000 ) );
 
         db.Invoices.AddRange( salesInvoice, marketingInvoice, engineeringInvoice );
 

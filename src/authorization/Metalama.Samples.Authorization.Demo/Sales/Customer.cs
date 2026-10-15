@@ -13,7 +13,7 @@ namespace Metalama.Samples.Authorization.Demo.Sales;
 [AuthorizationOptions( DefaultWritePermission = DemoPermissions.Approve )]
 public sealed class Customer( Department department, string name ) : Entity
 {
-    // Used by Entity Framework, which then sets the backing fields.
+    // Used by Entity Framework, which creates entities in a system scope.
     private Customer() : this( null!, null! ) { }
 
     // The department changes only through MoveTo, which checks the destination.

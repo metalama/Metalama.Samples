@@ -5,22 +5,26 @@ namespace Metalama.Samples.Authorization.Tests.CollectionProperty;
 [ApplyDefaultPermissions]
 public class Document
 {
-    private readonly List<string> _authors = [];
+    private readonly GuardedList<string> _authors = [];
 
-    // IList<T> and ICollection<T>: the getter returns a guarded view, so changing the content requires Write.
-    public IList<string> Tags { get; } = new List<string>();
+    // The getter sets the owner of the guarded list on the first access, so that changing the list requires Write.
+    public IList<string> Tags { get; } = new GuardedList<string>();
 
-    public ICollection<int> Pages => this._pages;
+    public ICollection<int> Pages { get; } = new GuardedList<int>();
 
-    private readonly List<int> _pages = [];
+    // A property can also be declared with the guarded type.
+    public GuardedList<string> Reviewers { get; } = [];
 
-    // Read-only types are returned as they are. The class must not return a mutable object behind them.
-    public IReadOnlyList<string> Authors => this._authors.AsReadOnly();
+    // A read-only type is guarded too: casting it back to IList<T> does not bypass the check.
+    public IReadOnlyList<string> Authors => this._authors;
+
+    // A sequence that is not a collection, and an immutable type, are returned as they are.
+    public IEnumerable<string> UpperTags => this.Tags.Select( t => t.ToUpperInvariant() );
 
     public ImmutableArray<string> Keywords { get; set; } = [];
 
-    // Mutable types that the view cannot replace: warning AUTH003.
-    public List<string> Reviewers { get; } = [];
+    // Types that the getter cannot guard: warning AUTH003.
+    public List<string> Approvers { get; } = [];
 
     public string[] Sections { get; } = [];
 

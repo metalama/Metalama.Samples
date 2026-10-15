@@ -5,31 +5,34 @@ using Metalama.Framework.Code.Types;
 namespace Metalama.Samples.Authorization;
 
 /// <summary>
-/// How a secured property exposes a collection.
+/// How the getter of a secured property returns a collection, so that a caller can never reach the mutable state
+/// of the object.
 /// </summary>
 [CompileTime]
 internal enum CollectionKind
 {
     /// <summary>
-    /// The type is not a collection.
+    /// The type is not a collection: the getter returns the value.
     /// </summary>
     None,
 
     /// <summary>
-    /// <see cref="IList{T}"/> or <see cref="ICollection{T}"/>: the getter returns a <see cref="GuardedListView{T}"/> view.
+    /// <see cref="IList{T}"/>, <see cref="ICollection{T}"/>, <see cref="IReadOnlyList{T}"/>,
+    /// <see cref="IReadOnlyCollection{T}"/> or <see cref="IEnumerable{T}"/>: the getter sets the owner of the
+    /// <see cref="GuardedList{T}"/> that the property returns, so that only authorized callers change it.
     /// </summary>
-    Wrappable,
+    Guarded,
 
     /// <summary>
-    /// A read-only type or interface. The class must not return a mutable object behind it.
+    /// An immutable or read-only type, such as <c>ImmutableArray&lt;T&gt;</c>: the getter returns the value.
     /// </summary>
-    ReadOnly,
+    Immutable,
 
     /// <summary>
-    /// A mutable type that the view cannot replace, such as <see cref="List{T}"/>, an array, a set or a dictionary:
-    /// any caller who can read the property can change its content.
+    /// A type that the getter cannot guard: a mutable type, such as <see cref="List{T}"/>, an array, a set or a
+    /// dictionary, or an interface of a dictionary or set, which may be backed by a mutable object.
     /// </summary>
-    Mutable
+    Unguarded
 }
 
 [CompileTime]
@@ -39,7 +42,7 @@ internal static class CollectionTypes
     {
         if ( type is IArrayType )
         {
-            return CollectionKind.Mutable;
+            return CollectionKind.Unguarded;
         }
 
         if ( type is not INamedType namedType || namedType.SpecialType == SpecialType.String )
@@ -49,33 +52,37 @@ internal static class CollectionTypes
 
         var definition = namedType.Definition;
 
-        if ( Is( definition, typeof(IList<>) ) || Is( definition, typeof(ICollection<>) ) )
+        // A property can also be declared with a guarded type, such as GuardedList<T>.
+        if ( namedType.AllImplementedInterfaces.Any( i => Is( i, typeof(IGuardedCollection) ) ) )
         {
-            return CollectionKind.Wrappable;
+            return CollectionKind.Guarded;
         }
 
-        if ( Is( definition, typeof(IEnumerable<>) ) || Is( definition, typeof(IReadOnlyCollection<>) )
-                                                    || Is( definition, typeof(IReadOnlyList<>) )
-                                                    || Is( definition, typeof(IReadOnlyDictionary<,>) )
-                                                    || Is( definition, typeof(IReadOnlySet<>) ) )
+        if ( Is( definition, typeof(IList<>) ) || Is( definition, typeof(ICollection<>) )
+                                              || Is( definition, typeof(IReadOnlyList<>) )
+                                              || Is( definition, typeof(IReadOnlyCollection<>) )
+                                              || Is( definition, typeof(IEnumerable<>) ) )
         {
-            return CollectionKind.ReadOnly;
+            return CollectionKind.Guarded;
+        }
+
+        if ( Is( definition, typeof(IReadOnlyDictionary<,>) ) || Is( definition, typeof(IReadOnlySet<>) ) )
+        {
+            return CollectionKind.Unguarded;
+        }
+
+        var ns = namedType.ContainingNamespace.FullName;
+
+        if ( ns is "System.Collections.Immutable" or "System.Collections.Frozen"
+             || (ns == "System.Collections.ObjectModel" && namedType.Name.StartsWith( "ReadOnly", StringComparison.Ordinal )) )
+        {
+            return CollectionKind.Immutable;
         }
 
         var isCollection = namedType.AllImplementedInterfaces.Any( i => Is( i.Definition, typeof(ICollection<>) ) )
                            || namedType.AllImplementedInterfaces.Any( i => Is( i, typeof(System.Collections.IList) ) );
 
-        if ( !isCollection )
-        {
-            return CollectionKind.None;
-        }
-
-        var ns = namedType.ContainingNamespace.FullName;
-
-        var isReadOnlyType = ns is "System.Collections.Immutable" or "System.Collections.Frozen"
-                             || (ns == "System.Collections.ObjectModel" && namedType.Name.StartsWith( "ReadOnly", StringComparison.Ordinal ));
-
-        return isReadOnlyType ? CollectionKind.ReadOnly : CollectionKind.Mutable;
+        return isCollection ? CollectionKind.Unguarded : CollectionKind.None;
     }
 
     private static bool Is( INamedType type, Type reflectionType ) => type.Equals( TypeFactory.GetType( reflectionType ) );

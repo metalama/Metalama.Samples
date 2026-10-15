@@ -13,9 +13,17 @@ public class Folder : InMemoryRoleBasedSecurable
     [RequiresPermission( PermissionNames.Read, PermissionNames.Write )]
     public string? Title { get; set; }
 
-    // The getter returns a guarded view of the list.
+    // The getter sets the owner of the guarded list on the first access.
     [RequiresPermission( PermissionNames.Read, PermissionNames.Write )]
-    public IList<string> Tags { get; } = new List<string>();
+    public IList<string> Tags { get; } = new GuardedList<string>();
+
+    // A read-only type is guarded too: casting it back to IList<T> does not bypass the check.
+    [RequiresPermission( PermissionNames.Read, PermissionNames.Write )]
+    public IReadOnlyList<string> History { get; } = new GuardedList<string>();
+
+    // A sequence that is not a collection is returned as it is.
+    [RequiresPermission( PermissionNames.Read )]
+    public IEnumerable<string> UpperTags => this.Tags.Select( t => t.ToUpperInvariant() );
 
     protected override IRoleBasedSecurable? SecurityParent => this.Parent;
 
@@ -23,6 +31,42 @@ public class Folder : InMemoryRoleBasedSecurable
 }
 
 public class SpecialFolder : Folder;
+
+/// <summary>
+/// A folder that returns an ordinary list from a secured property: the getter fails closed.
+/// </summary>
+public sealed class UnguardedFolder : InMemoryRoleBasedSecurable
+{
+    [RequiresPermission( PermissionNames.Read, PermissionNames.Write )]
+    public IList<string> Tags { get; } = new List<string>();
+
+    protected override IRoleBasedSecurable? SecurityParent => null;
+}
+
+/// <summary>
+/// A folder that refuses changes of its tags once it is archived, through the owner hook.
+/// </summary>
+public sealed class ArchivableFolder : InMemoryRoleBasedSecurable, IGuardedCollectionOwner
+{
+    [RequiresPermission( PermissionNames.Read, PermissionNames.Write )]
+    public IList<string> Tags { get; } = new GuardedList<string>();
+
+    public bool IsArchived { get; set; }
+
+    public List<string> ChangedProperties { get; } = [];
+
+    protected override IRoleBasedSecurable? SecurityParent => null;
+
+    void IGuardedCollectionOwner.OnCollectionChanging( string propertyName )
+    {
+        this.ChangedProperties.Add( propertyName );
+
+        if ( this.IsArchived )
+        {
+            throw new InvalidOperationException( "The folder is archived." );
+        }
+    }
+}
 
 /// <summary>
 /// A folder with a label and a name that must not appear in messages.

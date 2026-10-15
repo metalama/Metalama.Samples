@@ -10,22 +10,17 @@ namespace Metalama.Samples.Authorization.Demo.Sales;
 /// inherited from <see cref="Entity"/> (properties need <c>Read</c>/<c>Write</c>), the project fabric (methods
 /// without an attribute need <c>Write</c>), and explicit <see cref="RequiresPermissionAttribute"/> attributes.</para>
 /// <para>Authorization answers "may this user do this?". Business rules, such as "an approved invoice cannot be
-/// edited", are a separate concern and are enforced by the methods themselves.</para>
+/// edited", are a separate concern and are enforced by the methods themselves, and by
+/// <see cref="IGuardedCollectionOwner.OnCollectionChanging"/> for the lines.</para>
 /// </remarks>
-public sealed class Invoice : Entity
+public sealed class Invoice : Entity, IGuardedCollectionOwner
 {
-    private readonly List<InvoiceLine> _lines = [];
     private Department _department;
     private InvoiceStatus _status;
     private decimal _amountPaid;
 
-    // Used by Entity Framework, which then sets the backing fields. A constructor must not call a secured setter:
-    // Entity Framework runs it when loading the invoice, typically without any permission.
-    private Invoice()
-    {
-        this._department = null!;
-        this.Number = null!;
-    }
+    // Used by Entity Framework, which creates entities in a system scope, so the constructor can set secured properties.
+    private Invoice() : this( null!, null!, null!, null ) { }
 
     internal Invoice( Department department, Customer customer, string number, User? creator )
     {
@@ -57,18 +52,14 @@ public sealed class Invoice : Entity
 
     public InvoiceStatus Status => this._status;
 
-    // A secured getter must not return a mutable reference to the secured state: a caller with Read could
-    // cast the list and change the lines without Write.
-    public IReadOnlyList<InvoiceLine> Lines => this._lines.AsReadOnly();
+    public IList<InvoiceLine> Lines { get; } = new GuardedList<InvoiceLine>();
 
     /// <summary>
-    /// Gets the internal notes of the invoice. Unlike the lines, notes have no business rule: anyone who can edit the
-    /// invoice can add or remove notes at any time. The getter returns a guarded view of the list, so reading the
-    /// notes requires Read, and changing them requires Write.
+    /// Gets the internal notes of the invoice. Unlike the lines, notes can change at any status.
     /// </summary>
-    public IList<string> Notes { get; } = new List<string>();
+    public IList<string> Notes { get; } = new GuardedList<string>();
 
-    public decimal Total => this._lines.Sum( l => l.Amount );
+    public decimal Total => this.Lines.Sum( l => l.Amount );
 
     public decimal AmountPaid => this._amountPaid;
 
@@ -91,26 +82,12 @@ public sealed class Invoice : Entity
         this.Customer = customer;
     }
 
-    // No attribute: Write is the default permission of methods.
-    public void AddLine( string description, decimal quantity, decimal unitPrice )
-    {
-        this.EnsureStatus( InvoiceStatus.Draft );
-        this._lines.Add( new InvoiceLine( description, quantity, unitPrice ) );
-    }
-
-    // No attribute: requires Write too.
-    public void RemoveLine( int index )
-    {
-        this.EnsureStatus( InvoiceStatus.Draft );
-        this._lines.RemoveAt( index );
-    }
-
     [RequiresPermission( DemoPermissions.Approve )]
     public void Approve()
     {
         this.EnsureStatus( InvoiceStatus.Draft );
 
-        if ( this._lines.Count == 0 )
+        if ( this.Lines.Count == 0 )
         {
             throw new InvalidOperationException( $"Invoice {this.Number} has no line." );
         }
@@ -138,7 +115,7 @@ public sealed class Invoice : Entity
 
         this._amountPaid += amount;
 
-        if ( this._amountPaid >= this._lines.Sum( l => l.Amount ) )
+        if ( this._amountPaid >= this.Total )
         {
             this._status = InvoiceStatus.Paid;
         }
@@ -165,6 +142,17 @@ public sealed class Invoice : Entity
     public void TransferTo( [RequiresPermission( PermissionNames.ChangeOwnership )] Department target )
     {
         this._department = target;
+    }
+
+    // The guarded lists call this method after they have checked the Write permission, before each change.
+    // The permission is already checked, so the method is excluded from default securing.
+    [AuthorizationOptions( IsDefaultSecuringEnabled = false )]
+    void IGuardedCollectionOwner.OnCollectionChanging( string propertyName )
+    {
+        if ( propertyName == nameof(this.Lines) )
+        {
+            this.EnsureStatus( InvoiceStatus.Draft );
+        }
     }
 
     public override string ToString() => $"invoice {this.Number}";

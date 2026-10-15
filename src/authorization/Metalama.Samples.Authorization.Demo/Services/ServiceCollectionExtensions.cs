@@ -17,10 +17,13 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<InMemoryDatabase>();
 
         // Split queries load each collection navigation, such as role assignments, with its own SQL query.
+        // Entities that Entity Framework loads are created in a system scope.
         services.AddDbContext<InvoicingDbContext>(
-            ( provider, options ) => options.UseSqlite(
-                provider.GetRequiredService<InMemoryDatabase>().ConnectionString,
-                sqlite => sqlite.UseQuerySplittingBehavior( QuerySplittingBehavior.SplitQuery ) ) );
+            ( provider, options ) => options
+                .UseSqlite(
+                    provider.GetRequiredService<InMemoryDatabase>().ConnectionString,
+                    sqlite => sqlite.UseQuerySplittingBehavior( QuerySplittingBehavior.SplitQuery ) )
+                .AddInterceptors( SystemScopeMaterializationInterceptor.Instance ) );
 
         // Security infrastructure. In a real application, the policy would load its rules from the database
         // and be refreshed when an administrator changes them.

@@ -41,15 +41,18 @@ public class StructuralRulesTests : IAsyncLifetime
     }
 
     [Fact]
-    public void InvoiceLines_CannotBeChangedThroughTheGetter()
+    public void InvoiceLines_AreTheGuardedListOfTheInvoice()
     {
-        // A caller with Read must not be able to change the lines, which requires Write.
         using ( this._org.SignIn( this._org.Ada ) )
         {
             var lines = this._org.SalesInvoice.Lines;
 
-            Assert.IsNotType<List<InvoiceLine>>( lines );
-            Assert.Throws<NotSupportedException>( () => ((IList<InvoiceLine>) lines).Add( new InvoiceLine( "Gift", 1, 1_000 ) ) );
+            // The property returns the list itself, the same instance each time, owned by the invoice.
+            Assert.Same( lines, this._org.SalesInvoice.Lines );
+            Assert.Same( this._org.SalesInvoice, Assert.IsType<GuardedList<InvoiceLine>>( lines ).Owner );
+
+            // Ada can read the lines, but changing them requires Write.
+            Assert.Throws<AccessDeniedException>( () => lines.Add( new InvoiceLine( "Gift", 1, 1_000 ) ) );
         }
     }
 

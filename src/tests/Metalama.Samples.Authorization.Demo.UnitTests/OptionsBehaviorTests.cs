@@ -71,7 +71,7 @@ public class OptionsBehaviorTests : IAsyncLifetime
     [Fact]
     public void ProjectOption_UnannotatedMethodsRequireWrite()
     {
-        var invoiceDenial = this.Denial( this._org.Ada, () => this._org.SalesInvoice.RemoveLine( 0 ) );
+        var invoiceDenial = this.Denial( this._org.Ada, () => this._org.SalesInvoice.ChangeCustomer( this._org.Fabrikam ) );
         var budgetDenial = this.Denial( this._org.Mia, () => this._org.SalesBudget.Adjust( 1 ) );
 
         Assert.Equal( PermissionNames.Write, invoiceDenial.Permission.Name );

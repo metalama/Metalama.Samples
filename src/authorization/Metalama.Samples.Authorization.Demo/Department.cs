@@ -9,7 +9,7 @@ namespace Metalama.Samples.Authorization.Demo;
 /// </summary>
 public sealed class Department( Company company, string code, string name ) : Entity
 {
-    // Used by Entity Framework, which then sets the backing fields.
+    // Used by Entity Framework, which creates entities in a system scope.
     private Department() : this( null!, null!, null! ) { }
 
     public Company Company { get; } = company;
