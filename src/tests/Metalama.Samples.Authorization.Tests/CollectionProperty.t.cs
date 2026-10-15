@@ -3,7 +3,7 @@
 // Warning AUTH003 on `Metadata`: `'Document.Metadata' returns the collection type 'Dictionary<string, string>', which the getter cannot guard: a caller who can read it may change its content without the write permission. Declare it as IList<T>, ICollection<T>, IReadOnlyList<T>, IReadOnlyCollection<T> or IEnumerable<T>, initialized with a GuardedList<T>, or as an immutable type.`
 using System.Collections.Immutable;
 namespace Metalama.Samples.Authorization.Tests.CollectionProperty;
-[ApplyDefaultPermissions]
+[SecurableType]
 public class Document
 {
   private readonly GuardedList<string> _authors = [];

@@ -28,7 +28,7 @@ The first layer is abstract. It does not assume any security model. It defines f
 |---|---|---|
 | Subject | `ISubject` | The user or service on whose behalf the code runs. |
 | Permission | `Permission` | Something that the subject must have on an object, for instance `Read`, `Write` or `Approve`. Permissions are compared by name. |
-| Securable | any object | The object on which the permission is required. For a method or property, it is the current instance. For a parameter, it is the argument. |
+| Securable | `ISecurable` | The object on which the permission is required. For a method or property, it is the current instance. For a parameter, it is the argument. Every class that implements `ISecurable` is secured and validated. |
 | Policy | `IAuthorizationPolicy` | Decides whether a subject has a permission on a securable. |
 | Security context | `ISecurityContext` | The current subject, the policy, and an optional auditor. `SecurityContext.Current` exposes it. |
 
@@ -85,14 +85,22 @@ A few details are worth noting:
 * A private setter is not checked. The class changes its own state through it, typically from a method that is itself secured.
 * The getter of a collection property sets the owner of the `GuardedList<T>` that the property returns (see [Collections](#collections)).
 * The aspect is `[Inheritable]`. An override of a secured virtual member gets the same check, so a derived class cannot skip it by not calling the base implementation. On an abstract member, the aspect secures all the overrides.
-* The eligibility rules reject static members, `out` parameters and parameters of a value type. Static members have no instance on which to check a permission. Abstract members are rejected except through inheritance, with `builder.ExceptForInheritance().MustNotBeAbstract()`.
+* The eligibility rules reject static members, `out` parameters, and parameters whose type is not securable. Static members have no instance on which to check a permission. A parameter check needs a securable argument: passing an object that no policy can secure would always be denied, so it is a build error. Abstract members are rejected except through inheritance, with `builder.ExceptForInheritance().MustNotBeAbstract()`.
 * When the attribute does not name a permission, the defaults of `AuthorizationOptions` apply. A method requires `Write` by default.
 
-### ApplyDefaultPermissions
+### ISecurable and SecurableType
 
-The `[ApplyDefaultPermissions]` aspect adds `[RequiresPermission]` to all members of a class that do not have it yet. The demo applies it to the `Entity` base class. The aspect is `[Inheritable]`, so it applies to all derived classes, including the classes of other projects.
+`ISecurable` is an empty interface that marks the securable classes. The `[SecurableType]` aspect is applied to this interface, and Metalama propagates an `[Inheritable]` aspect from an interface to every class that implements it, and to their derived classes. `IRoleBasedSecurable` derives from `ISecurable`, so the demo's `Entity`, which derives from `RoleBasedSecurable`, has no attribute at all:
 
-[!metalama-file Metalama.Samples.Authorization/Framework/ApplyDefaultPermissionsAttribute.cs]
+[!metalama-file Metalama.Samples.Authorization/Framework/ISecurable.cs]
+
+The `[SecurableType]` aspect adds `[RequiresPermission]` to all members of a class that do not have it yet, and registers a validator (see below). On the interface itself, the aspect does nothing: its eligibility rejects interfaces except for inheritance, with `builder.ExceptForInheritance().MustNotBeInterface()`. The aspect can also be applied directly to a class that is not securable, which the aspect tests do.
+
+Attaching the aspect to the interface, rather than asking the developer to add an attribute to each class hierarchy, makes two facts the same: an object that the policy can secure is always secured and validated. With an attribute, a new hierarchy of securable classes that forgets the attribute has no default check, and the validator cannot report it, because the validator is part of the missing aspect. With the interface, the security of a class is part of its type, so it cannot be forgotten. The interface also gives the parameter checks a type: a `[RequiresPermission]` parameter must be securable, which the compiler verifies.
+
+The cost is that securing becomes implicit: a class that implements the interface for another reason is secured too. A type or a member is excluded explicitly with `[AuthorizationOptions( IsDefaultSecuringEnabled = false )]`. The framework uses this for its own infrastructure members, such as `RoleBasedSecurable.HasRole`, which the policy calls, and for `GuardedList<T>` (see [Collections](#collections)). The framework unit tests disable default securing for their whole assembly, because they test explicit attributes.
+
+[!metalama-file Metalama.Samples.Authorization/Framework/SecurableTypeAttribute.cs]
 
 The aspect adds child aspects with `builder.Outbound.SelectMany(...).AddAspectIfEligible(...)`. A child aspect must be processed after its parent, so the library declares the order with `[assembly: AspectOrder]`.
 
@@ -104,7 +112,7 @@ The aspect never secures private members, members that already have `[RequiresPe
 
 Default securing has gaps by construction. The aspects cannot secure a static member, which has no instance on which to check a permission, nor an indexer or an event, which they do not support. A member can also lose its check by mistake, for instance after a change of options. In an authorization framework, such a gap is a security hole that nothing reports: the code compiles, the tests of the other members pass, and the member is open to every user.
 
-For this reason, `[ApplyDefaultPermissions]` also registers a validator. The validator runs after all aspects have been applied (`DeclarationValidationTime.AfterAllAspects`), so it sees the final code: the checks added by default, by explicit attributes and by inheritance. It reports a warning for each member that a caller can reach but that has no check and was not excluded explicitly:
+For this reason, `[SecurableType]` also registers a validator. The validator runs after all aspects have been applied (`DeclarationValidationTime.AfterAllAspects`), so it sees the final code: the checks added by default, by explicit attributes and by inheritance. It reports a warning for each member that a caller can reach but that has no check and was not excluded explicitly:
 
 * `AUTH001`: an exposed member has no permission check, for instance an indexer or an event.
 * `AUTH002`: an exposed member is static.
@@ -124,7 +132,7 @@ A check on a getter protects the reference that it returns, not the content of t
 public IList<InvoiceLine> Lines { get; } = new GuardedList<InvoiceLine>();
 ```
 
-`GuardedList<T>` is the list itself, not a wrapper around another list. It derives from `Collection<T>`, and each change (`Add`, `Insert`, `Remove`, `RemoveAt`, `Clear` and the indexer setter) demands the write permission of the property on the owner of the list. The list checks the subject at the moment of the change, not the subject that read the property.
+`GuardedList<T>` is the list itself, not a wrapper around another list. It is securable: a member of this type protects itself, so the validator accepts it. Its own members are excluded from default securing, because each change is checked against the owner of the list, not against the list. It derives from `Collection<T>`, and each change (`Add`, `Insert`, `Remove`, `RemoveAt`, `Clear` and the indexer setter) demands the write permission of the property on the owner of the list. The list checks the subject at the moment of the change, not the subject that read the property.
 
 The owner is set on the first access. A property initializer such as `= new GuardedList<InvoiceLine>()` runs where the owner is not available, so the list starts without an owner. The getter generated by `[RequiresPermission]` knows the owner, so it calls `GuardedCollection.SetOwner` and passes `this`, the write permission and the property name. The owner can be set only once: setting the same owner again has no effect, and another owner makes the call throw, because a list shared by two objects would be checked against the wrong one. A list without an owner checks nothing. Before the first access, only the code of the owner can reach the list, and so can Entity Framework, which fills it when it loads the object.
 
@@ -168,8 +176,8 @@ The aspects read their defaults from the `AuthorizationOptions` class, which imp
 | `DefaultReadPermission` | `Read` | Permission to read a field or property. |
 | `DefaultWritePermission` | `Write` | Permission to write a field or property. |
 | `DefaultExecutePermission` | `Write` | Permission to execute a method. |
-| `SecureNonPublicMembers` | `false` | Whether `[ApplyDefaultPermissions]` also secures `internal` and `protected` members. |
-| `IsDefaultSecuringEnabled` | `true` | Whether `[ApplyDefaultPermissions]` secures the target. Set it to `false` to exclude a namespace, a type or a member. |
+| `SecureNonPublicMembers` | `false` | Whether `[SecurableType]` also secures `internal` and `protected` members. |
+| `IsDefaultSecuringEnabled` | `true` | Whether `[SecurableType]` secures the target. Set it to `false` to exclude a namespace, a type or a member. |
 
 [!metalama-file Metalama.Samples.Authorization/Framework/AuthorizationOptions.cs]
 
@@ -416,7 +424,7 @@ A connection to an in-memory SQLite database cannot be used by concurrent reques
 
 The aspect tests in `Metalama.Samples.Authorization.Tests` verify the generated code. They cover each kind of target (methods, `async` methods, properties, `init` accessors, fields, explicit interface implementations, method and constructor parameters), default permissions, inheritance by overrides and by abstract members, each level of options, the eligibility errors, the guarded lists of collection properties, and the warnings of the validator.
 
-Two tests, `Demo_SalesConventions` and `Demo_FinanceConventions`, compile the real configuration of the demo application with `// @Include` directives: the `Entity` base class and its storage types, the project fabric, the namespace fabric and the permission names. They show the code that this configuration generates. For instance, in the `Finance` namespace:
+`SecurableInterface` shows that implementing `ISecurable`, directly or through a derived interface, is enough. Two tests, `Demo_SalesConventions` and `Demo_FinanceConventions`, compile the real configuration of the demo application with `// @Include` directives: the `Entity` base class and its storage types, the project fabric, the namespace fabric and the permission names. They show the code that this configuration generates. For instance, in the `Finance` namespace:
 
 [!metalama-compare ../tests/Metalama.Samples.Authorization.Tests/Demo_FinanceConventions.cs]
 

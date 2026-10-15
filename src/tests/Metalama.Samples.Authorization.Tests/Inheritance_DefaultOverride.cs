@@ -1,6 +1,6 @@
 namespace Metalama.Samples.Authorization.Tests.Inheritance_DefaultOverride;
 
-[ApplyDefaultPermissions]
+[SecurableType]
 [AuthorizationOptions( DefaultExecutePermission = "Write" )]
 public class Document
 {

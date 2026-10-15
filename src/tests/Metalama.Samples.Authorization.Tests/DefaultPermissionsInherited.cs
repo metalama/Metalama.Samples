@@ -1,6 +1,6 @@
 namespace Metalama.Samples.Authorization.Tests.DefaultPermissionsInherited;
 
-[ApplyDefaultPermissions]
+[SecurableType]
 public abstract class Entity
 {
     public string? Name { get; set; }

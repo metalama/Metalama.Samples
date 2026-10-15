@@ -6,7 +6,7 @@ namespace Metalama.Samples.Authorization.Demo.Sales;
 /// An invoice issued by a <see cref="Department"/> to a <see cref="Customer"/>.
 /// </summary>
 /// <remarks>
-/// <para>Permission checks come from three sources: the <see cref="ApplyDefaultPermissionsAttribute"/> aspect
+/// <para>Permission checks come from three sources: the <see cref="SecurableTypeAttribute"/> aspect
 /// inherited from <see cref="Entity"/> (properties need <c>Read</c>/<c>Write</c>), the project fabric (methods
 /// without an attribute need <c>Write</c>), and explicit <see cref="RequiresPermissionAttribute"/> attributes.</para>
 /// <para>Authorization answers "may this user do this?". Business rules, such as "an approved invoice cannot be

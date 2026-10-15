@@ -3,7 +3,7 @@ namespace Metalama.Samples.Authorization.RoleBased;
 /// <summary>
 /// An object secured by <see cref="RoleBasedAuthorizationPolicy"/>: it can tell whether a subject has a role on it.
 /// </summary>
-public interface IRoleBasedSecurable
+public interface IRoleBasedSecurable : ISecurable
 {
     /// <summary>
     /// Gets the object from which this object inherits role assignments, or <c>null</c>.

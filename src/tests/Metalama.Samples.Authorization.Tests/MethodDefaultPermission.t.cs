@@ -8,7 +8,7 @@ public class Document
     AccessGuard.Demand(this, "Write", "Document.Archive", AccessKind.Execute);
   }
 }
-[ApplyDefaultPermissions]
+[SecurableType]
 public class Report
 {
   public void Refresh()

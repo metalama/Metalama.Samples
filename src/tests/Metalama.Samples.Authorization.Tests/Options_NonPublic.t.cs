@@ -1,5 +1,5 @@
 namespace Metalama.Samples.Authorization.Tests.Options_NonPublic;
-[ApplyDefaultPermissions]
+[SecurableType]
 [AuthorizationOptions(SecureNonPublicMembers = true)]
 public class Document
 {

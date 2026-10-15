@@ -1,6 +1,6 @@
 namespace Metalama.Samples.Authorization.Tests.ConstructorParameter;
 
-public class Folder;
+public class Folder : ISecurable;
 
 public class Document
 {

@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 
 namespace Metalama.Samples.Authorization.Tests.CollectionProperty;
 
-[ApplyDefaultPermissions]
+[SecurableType]
 public class Document
 {
     private readonly GuardedList<string> _authors = [];

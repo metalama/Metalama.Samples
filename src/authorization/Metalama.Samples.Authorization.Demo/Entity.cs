@@ -3,11 +3,11 @@ using Metalama.Samples.Authorization.Demo.Data;
 namespace Metalama.Samples.Authorization.Demo;
 
 /// <summary>
-/// Base class of all business objects. The <see cref="ApplyDefaultPermissionsAttribute"/> aspect is inherited,
-/// so every derived class gets permission checks on its members, configured by <see cref="AuthorizationOptions"/>.
-/// The owner and the role assignments are stored with Entity Framework by <see cref="EfRoleBasedSecurable"/>.
+/// Base class of all business objects. Like every <see cref="ISecurable"/> class, it inherits the
+/// <see cref="SecurableTypeAttribute"/> aspect, so every derived class gets permission checks on its members,
+/// configured by <see cref="AuthorizationOptions"/>, and is validated. The owner and the role assignments are stored
+/// with Entity Framework by <see cref="EfRoleBasedSecurable"/>.
 /// </summary>
-[ApplyDefaultPermissions]
 public abstract class Entity : EfRoleBasedSecurable, IHasSecurityLabel
 {
     /// <summary>

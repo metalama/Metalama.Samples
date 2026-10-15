@@ -45,14 +45,14 @@ public sealed class AuthorizationOptions :
     public string? DefaultExecutePermission { get; init; }
 
     /// <summary>
-    /// Gets a value indicating whether <see cref="ApplyDefaultPermissionsAttribute"/> also secures
+    /// Gets a value indicating whether <see cref="SecurableTypeAttribute"/> also secures
     /// <c>internal</c> and <c>protected</c> members. Private members are never secured by default.
     /// The default is <c>false</c>.
     /// </summary>
     public bool? SecureNonPublicMembers { get; init; }
 
     /// <summary>
-    /// Gets a value indicating whether <see cref="ApplyDefaultPermissionsAttribute"/> secures the members it targets.
+    /// Gets a value indicating whether <see cref="SecurableTypeAttribute"/> secures the members it targets.
     /// Set it to <c>false</c> to exclude a namespace, a type or a member. The default is <c>true</c>.
     /// </summary>
     public bool? IsDefaultSecuringEnabled { get; init; }

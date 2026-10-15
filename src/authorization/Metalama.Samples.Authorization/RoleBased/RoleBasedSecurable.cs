@@ -33,6 +33,7 @@ public abstract class RoleBasedSecurable : IRoleBasedSecurable
     [AuthorizationOptions( IsDefaultSecuringEnabled = false )]
     protected abstract IRoleBasedSecurable? SecurityParent { get; }
 
+    [AuthorizationOptions( IsDefaultSecuringEnabled = false )]
     IRoleBasedSecurable? IRoleBasedSecurable.SecurityParent => this.SecurityParent;
 
     /// <summary>
@@ -98,6 +99,8 @@ public abstract class RoleBasedSecurable : IRoleBasedSecurable
     public bool RevokeRole( ISubject subject, Role role ) => this.RemoveRoleAssignment( new RoleAssignment( subject, role ) );
 
     /// <inheritdoc />
+    /// <remarks>The policy calls this method in a system scope, so it is excluded from default securing.</remarks>
+    [AuthorizationOptions( IsDefaultSecuringEnabled = false )]
     public bool HasRole( ISubject subject, Role role )
     {
         // Computed roles apply to the object itself and are not inherited by children.

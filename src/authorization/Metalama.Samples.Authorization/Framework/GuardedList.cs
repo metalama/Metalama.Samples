@@ -16,7 +16,10 @@ namespace Metalama.Samples.Authorization;
 /// <para>A list without an owner is not checked. Only the code of the owner can reach it before the first access, and
 /// so can Entity Framework, which fills the list when it loads the object.</para>
 /// </remarks>
-public sealed class GuardedList<T> : Collection<T>, IGuardedCollection
+// The list is securable: a member of this type protects itself. Its own members are not secured, because each
+// change is checked against the owner of the list, not against the list.
+[AuthorizationOptions( IsDefaultSecuringEnabled = false )]
+public sealed class GuardedList<T> : Collection<T>, IGuardedCollection, ISecurable
 {
     private string? _writePermission;
     private string? _member;

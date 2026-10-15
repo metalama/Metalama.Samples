@@ -40,8 +40,11 @@ public abstract class EfRoleBasedSecurable : RoleBasedSecurable
     protected override bool RemoveRoleAssignment( RoleAssignment assignment )
         => this.RoleAssignmentRecords.RemoveAll( r => r.User.Equals( assignment.Subject ) && r.RoleName == assignment.Role.Name ) > 0;
 
-    // The names of the storage members, for the mapping (see EfRoleBasedSecurableMapping).
+    // The names of the storage members, for the mapping (see EfRoleBasedSecurableMapping). They are constants.
+    [AuthorizationOptions( IsDefaultSecuringEnabled = false )]
     internal const string OwnerUserMember = nameof(OwnerUser);
+
+    [AuthorizationOptions( IsDefaultSecuringEnabled = false )]
     internal const string RoleAssignmentRecordsMember = nameof(RoleAssignmentRecords);
 
     private static User ToUser( ISubject subject )

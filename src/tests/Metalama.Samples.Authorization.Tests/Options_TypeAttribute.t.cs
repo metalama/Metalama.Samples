@@ -1,5 +1,5 @@
 namespace Metalama.Samples.Authorization.Tests.Options_TypeAttribute;
-[ApplyDefaultPermissions]
+[SecurableType]
 [AuthorizationOptions(DefaultWritePermission = "Approve")]
 public class Customer
 {

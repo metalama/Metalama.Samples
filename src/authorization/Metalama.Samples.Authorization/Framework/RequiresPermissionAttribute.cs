@@ -64,10 +64,8 @@ public sealed class RequiresPermissionAttribute : Aspect, IAspect<IMethod>, IAsp
         builder.MustNotBeReturnParameter();
         builder.MustBeReadable();
 
-        builder.Type()
-            .MustSatisfy(
-                t => t.IsReferenceType == true,
-                t => $"{t} must be a reference type" );
+        // Only a securable object can be checked: passing any other object would always be denied.
+        builder.Type().MustBeConvertibleTo( typeof(ISecurable) );
     }
 
     public void BuildAspect( IAspectBuilder<IMethod> builder )

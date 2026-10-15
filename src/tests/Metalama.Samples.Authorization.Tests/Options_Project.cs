@@ -9,7 +9,7 @@ public class Fabric : ProjectFabric
         => amender.SetOptions( new AuthorizationOptions { DefaultReadPermission = "View", DefaultWritePermission = "Edit" } );
 }
 
-[ApplyDefaultPermissions]
+[SecurableType]
 public class Document
 {
     public string? Title { get; set; }

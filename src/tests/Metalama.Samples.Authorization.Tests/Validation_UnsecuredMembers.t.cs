@@ -2,7 +2,7 @@
 // Warning AUTH001 on `this`: `'Document.this[int]' is exposed by the secured type 'Document' but has no permission check. Add [RequiresPermission], or exclude the member explicitly with [AuthorizationOptions( IsDefaultSecuringEnabled = false )].`
 // Warning AUTH001 on `Changed`: `'Document.Changed' is exposed by the secured type 'Document' but has no permission check. Add [RequiresPermission], or exclude the member explicitly with [AuthorizationOptions( IsDefaultSecuringEnabled = false )].`
 namespace Metalama.Samples.Authorization.Tests.Validation_UnsecuredMembers;
-[ApplyDefaultPermissions]
+[SecurableType]
 public class Document
 {
   private readonly string[] _pages = ["Cover"];

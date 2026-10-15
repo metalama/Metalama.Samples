@@ -7,7 +7,7 @@ public class Document
     public void Archive() { }
 }
 
-[ApplyDefaultPermissions]
+[SecurableType]
 public class Report
 {
     public void Refresh() { }

@@ -1,5 +1,5 @@
 namespace Metalama.Samples.Authorization.Tests.Options_DefaultExecute;
-[ApplyDefaultPermissions]
+[SecurableType]
 [AuthorizationOptions(DefaultExecutePermission = "Edit")]
 public class Document
 {

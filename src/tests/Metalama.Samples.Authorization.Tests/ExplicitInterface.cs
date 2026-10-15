@@ -7,7 +7,7 @@ public interface IArchivable
     bool IsArchived { get; }
 }
 
-[ApplyDefaultPermissions]
+[SecurableType]
 public class Document : IArchivable
 {
     private bool _isArchived;

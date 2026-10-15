@@ -1,6 +1,6 @@
 namespace Metalama.Samples.Authorization.Tests.Eligibility_Parameter;
 
-public class Folder;
+public class Folder : ISecurable;
 
 public class Document
 {
@@ -12,6 +12,8 @@ public class Document
         return false;
     }
 
-    // A value type cannot be a securable object.
+    // Only a securable object can be checked: a value type, or a reference type that is not securable, is an error.
     public void SetPriority( [RequiresPermission( "Write" )] int priority ) { }
+
+    public void Rename( [RequiresPermission( "Write" )] string name ) { }
 }

@@ -1,6 +1,6 @@
 namespace Metalama.Samples.Authorization.Tests.Options_OverridingMember;
 
-[ApplyDefaultPermissions]
+[SecurableType]
 [AuthorizationOptions( SecureNonPublicMembers = true )]
 public abstract class Entity
 {

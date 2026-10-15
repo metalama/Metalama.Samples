@@ -2,28 +2,33 @@ using Metalama.Extensions.Validation;
 using Metalama.Framework.Aspects;
 using Metalama.Framework.Code;
 using Metalama.Framework.Diagnostics;
+using Metalama.Framework.Eligibility;
 using Metalama.Samples.Authorization;
 
-// ApplyDefaultPermissions adds RequiresPermission aspects, so RequiresPermission must be processed after it.
-[assembly: AspectOrder( AspectOrderDirection.RunTime, typeof(RequiresPermissionAttribute), typeof(ApplyDefaultPermissionsAttribute) )]
+// SecurableType adds RequiresPermission aspects, so RequiresPermission must be processed after it.
+[assembly: AspectOrder( AspectOrderDirection.RunTime, typeof(RequiresPermissionAttribute), typeof(SecurableTypeAttribute) )]
 
 namespace Metalama.Samples.Authorization;
 
 /// <summary>
-/// Aspect that, applied to a class, adds <see cref="RequiresPermissionAttribute"/> with the default permissions
-/// of <see cref="AuthorizationOptions"/> to the fields, properties and methods of the class that do not have it
-/// yet. The aspect is inherited by derived classes.
+/// Aspect that makes a class securable: it adds <see cref="RequiresPermissionAttribute"/> with the default
+/// permissions of <see cref="AuthorizationOptions"/> to the fields, properties and methods of the class that do not
+/// have it yet, and validates that no member is left unsecured.
 /// </summary>
 /// <remarks>
-/// The aspect secures by default: every public member, and every explicit interface implementation, gets a check.
+/// <para>The aspect is applied to the <see cref="ISecurable"/> interface and inherited by every class that implements
+/// it, and by their derived classes. It can also be applied directly to a class.</para>
+/// </remarks>
+/// <remarks>
+/// <para>The aspect secures by default: every public member, and every explicit interface implementation, gets a check.
 /// A member is excluded only explicitly, with <c>[AuthorizationOptions( IsDefaultSecuringEnabled = false )]</c>.
 /// After all aspects have been applied, a validator reports a warning for every exposed member that still has no
 /// check and was not excluded explicitly, for instance a static member, an indexer or an event, which the aspects
-/// cannot secure.
+/// cannot secure.</para>
 /// </remarks>
 [Inheritable]
-[AttributeUsage( AttributeTargets.Class )]
-public sealed class ApplyDefaultPermissionsAttribute : TypeAspect
+[AttributeUsage( AttributeTargets.Class | AttributeTargets.Interface )]
+public sealed class SecurableTypeAttribute : TypeAspect
 {
     private static readonly DiagnosticDefinition<(IDeclaration Member, INamedType Type)> _unsecuredMemberWarning = new(
         "AUTH001",
@@ -43,6 +48,10 @@ public sealed class ApplyDefaultPermissionsAttribute : TypeAspect
         "'{0}' returns the collection type '{1}', which the getter cannot guard: a caller who can read it may change its " +
         "content without the write permission. Declare it as IList<T>, ICollection<T>, IReadOnlyList<T>, " +
         "IReadOnlyCollection<T> or IEnumerable<T>, initialized with a GuardedList<T>, or as an immutable type." );
+
+    // On an interface, the aspect does nothing itself: it is inherited by the classes that implement the interface.
+    public override void BuildEligibility( IEligibilityBuilder<INamedType> builder )
+        => builder.ExceptForInheritance().MustNotBeInterface();
 
     public override void BuildAspect( IAspectBuilder<INamedType> builder )
     {
