@@ -59,8 +59,17 @@ items:
           topicUid: sample-cache-3
         - name: Step 4. Supporting external types
           topicUid: sample-cache-4
-    - name: NotifyPropertyChanged
+    - name: INotifyPropertyChanged
       topicUid: sample-notifypropertychanged
+      items:
+        - name: Using the ready-made aspect
+          topicUid: sample-notifypropertychanged-observability
+        - name: "Custom aspect, step 1: Basic implementation"
+          topicUid: sample-notifypropertychanged-custom
+        - name: "Custom aspect, step 2: Dependencies within the type"
+          topicUid: sample-notifypropertychanged-sdk
+        - name: "Custom aspect, step 3: Dependencies on base class properties"
+          topicUid: sample-notifypropertychanged-sdk-2
     - name: Change Tracking
       topicUid: sample-dirty
       items:
@@ -148,7 +157,13 @@ items:
               topicUid: sample-call-telemetry-2
             - name: Step 3. Recording metrics
               topicUid: sample-call-telemetry-3
+        - name: Generating interception proxies
+          topicUid: sample-proxy
 
+    - name: Metrics
+      topicUid: sample-metrics
+    - name: MAUI Exception Tracking
+      topicUid: sample-maui-exception-tracking
     - name: Shared Fabrics
       topicUid: sample-shared-fabric
     - name: Contributing
