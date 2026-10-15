@@ -8,9 +8,13 @@ namespace Metalama.Samples.Authorization.Demo.UnitTests;
 /// cover what a single operation cannot show: state changes, the effect of role changes over time, and the
 /// interaction between authorization and business rules.
 /// </summary>
-public class WorkflowTests
+public class WorkflowTests : IAsyncLifetime
 {
-    private readonly DemoOrganization _org = DemoOrganization.Create();
+    private DemoOrganization _org = null!;
+
+    public async Task InitializeAsync() => this._org = await DemoOrganization.CreateAsync();
+
+    public async Task DisposeAsync() => await this._org.DisposeAsync();
 
     private void As( User user, Action action )
     {
@@ -39,7 +43,7 @@ public class WorkflowTests
 
         using ( this._org.SignIn( this._org.Sam ) )
         {
-            await invoice.SendAsync( CancellationToken.None );
+            await invoice.SendAsync( this._org.Outbox, CancellationToken.None );
         }
 
         this.As(
@@ -101,7 +105,7 @@ public class WorkflowTests
         using ( this._org.SignIn( this._org.Otto ) )
         {
             // The check runs in the async method, so the exception is stored in the task.
-            var task = this._org.SalesInvoice.SendAsync( CancellationToken.None );
+            var task = this._org.SalesInvoice.SendAsync( this._org.Outbox, CancellationToken.None );
 
             await Assert.ThrowsAsync<AccessDeniedException>( () => task );
         }

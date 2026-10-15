@@ -1,113 +1,123 @@
+using Metalama.Samples.Authorization.Demo.Data;
 using Metalama.Samples.Authorization.Demo.Finance;
 using Metalama.Samples.Authorization.Demo.Sales;
-using Metalama.Samples.Authorization.RoleBased;
-using static Metalama.Samples.Authorization.Demo.DemoRoles;
+using Metalama.Samples.Authorization.Demo.Services;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Metalama.Samples.Authorization.Demo;
 
 /// <summary>
-/// The sample organization: Contoso and its departments, people, customers, invoices and budgets.
-/// It is shared by the console program and the unit tests.
+/// The sample organization loaded from the database, with direct access to its objects. It gives tests and
+/// examples a short way to reach the domain objects, which application code reaches through the services.
 /// </summary>
-public sealed class DemoOrganization
+/// <remarks>
+/// The objects are loaded through a database context of a dependency injection scope, without any security
+/// context: Entity Framework does not go through the secured accessors.
+/// </remarks>
+public sealed class DemoOrganization : IAsyncDisposable
 {
-    private DemoOrganization()
+    private readonly ServiceProvider? _ownedProvider;
+    private readonly AsyncServiceScope _scope;
+
+    private DemoOrganization( IServiceProvider rootServices, ServiceProvider? ownedProvider )
     {
-        this.Contoso = new Company( "Contoso" );
-        this.Sales = new Department( this.Contoso, "SAL", "Sales" );
-        this.Marketing = new Department( this.Contoso, "MKT", "Marketing" );
-        this.Engineering = new Department( this.Contoso, "ENG", "Engineering" );
-
-        // Company-wide roles.
-        this.Contoso.AssignRole( this.Alice, Administrator );
-        this.Contoso.AssignRole( this.Ada, Accountant );
-        this.Contoso.AssignRole( this.Otto, Auditor );
-        this.Contoso.AssignRole( this.Grace, Auditor );
-
-        // Department roles.
-        this.Sales.AssignRole( this.Mia, DepartmentManager );
-        this.Sales.AssignRole( this.Sam, DepartmentAssistant );
-        this.Marketing.AssignRole( this.Mia, DepartmentManager );
-        this.Marketing.AssignRole( this.Grace, DepartmentManager );
-        this.Engineering.AssignRole( this.Erin, DepartmentManager );
-        this.Engineering.AssignRole( this.Tom, DepartmentAssistant );
-
-        this.Fabrikam = new Customer( this.Sales, "Fabrikam" )
-        {
-            Email = "billing@fabrikam.example", TaxId = "CZ12345678", CreditLimit = 50_000
-        };
-
-        this.Northwind = new Customer( this.Engineering, "Northwind Traders" ) { CreditLimit = 20_000 };
-
-        // Each invoice is created by its department's staff, who becomes its owner.
-        this.SalesInvoice = this.CreateInvoice( this.Sales, this.Fabrikam, this.Sam );
-        this.SalesInvoice.AddLine( "Consulting, March", 10, 1_200 );
-        this.SalesInvoice.AddLine( "Travel expenses", 1, 340 );
-
-        this.MarketingInvoice = this.CreateInvoice( this.Marketing, this.Fabrikam, this.Mia );
-        this.MarketingInvoice.AddLine( "Trade fair booth", 1, 4_500 );
-
-        this.EngineeringInvoice = this.CreateInvoice( this.Engineering, this.Northwind, this.Tom );
-        this.EngineeringInvoice.AddLine( "Prototype", 1, 8_000 );
-
-        this.SalesBudget = new Budget( this.Sales, 2026, 250_000 );
-        this.EngineeringBudget = new Budget( this.Engineering, 2026, 400_000 );
+        this.RootServices = rootServices;
+        this._ownedProvider = ownedProvider;
+        this._scope = rootServices.CreateAsyncScope();
     }
 
-    public RoleBasedAuthorizationPolicy Policy { get; } = DemoPolicy.Create();
-
-    // People.
-    public User Alice { get; } = new( "Alice (administrator)" );
-
-    public User Ada { get; } = new( "Ada (accountant)" );
-
-    public User Otto { get; } = new( "Otto (auditor)" );
-
-    public User Grace { get; } = new( "Grace (auditor, marketing manager)" );
-
-    public User Mia { get; } = new( "Mia (sales and marketing manager)" );
-
-    public User Sam { get; } = new( "Sam (sales assistant)" );
-
-    public User Erin { get; } = new( "Erin (engineering manager)" );
-
-    public User Tom { get; } = new( "Tom (engineering assistant)" );
-
-    public User Vera { get; } = new( "Vera (no role)" );
-
-    // Organization.
-    public Company Contoso { get; }
-
-    public Department Sales { get; }
-
-    public Department Marketing { get; }
-
-    public Department Engineering { get; }
-
-    // Business data.
-    public Customer Fabrikam { get; }
-
-    public Customer Northwind { get; }
-
-    public Invoice SalesInvoice { get; }
-
-    public Invoice MarketingInvoice { get; }
-
-    public Invoice EngineeringInvoice { get; }
-
-    public Budget SalesBudget { get; }
-
-    public Budget EngineeringBudget { get; }
+    /// <summary>
+    /// Gets the root service provider of the application.
+    /// </summary>
+    public IServiceProvider RootServices { get; }
 
     /// <summary>
-    /// Creates the organization. The data is loaded in a system scope, as it would be from a database.
+    /// Gets the service provider of the scope in which the objects are loaded.
     /// </summary>
-    public static DemoOrganization Create()
+    public IServiceProvider Services => this._scope.ServiceProvider;
+
+    public InvoicingDbContext Db => this.Services.GetRequiredService<InvoicingDbContext>();
+
+    public IAuthorizationPolicy Policy => this.Services.GetRequiredService<IAuthorizationPolicy>();
+
+    public RequestRunner Requests => this.Services.GetRequiredService<RequestRunner>();
+
+    public OutboxInvoiceSender Outbox => this.Services.GetRequiredService<OutboxInvoiceSender>();
+
+    // People.
+    public User Alice { get; private set; } = null!;
+
+    public User Ada { get; private set; } = null!;
+
+    public User Otto { get; private set; } = null!;
+
+    public User Grace { get; private set; } = null!;
+
+    public User Mia { get; private set; } = null!;
+
+    public User Sam { get; private set; } = null!;
+
+    public User Erin { get; private set; } = null!;
+
+    public User Tom { get; private set; } = null!;
+
+    public User Vera { get; private set; } = null!;
+
+    // Organization.
+    public Company Contoso { get; private set; } = null!;
+
+    public Department Sales { get; private set; } = null!;
+
+    public Department Marketing { get; private set; } = null!;
+
+    public Department Engineering { get; private set; } = null!;
+
+    // Business data.
+    public Customer Fabrikam { get; private set; } = null!;
+
+    public Customer Northwind { get; private set; } = null!;
+
+    public Invoice SalesInvoice { get; private set; } = null!;
+
+    public Invoice MarketingInvoice { get; private set; } = null!;
+
+    public Invoice EngineeringInvoice { get; private set; } = null!;
+
+    public Budget SalesBudget { get; private set; } = null!;
+
+    public Budget EngineeringBudget { get; private set; } = null!;
+
+    /// <summary>
+    /// Creates an application with a new in-memory database, seeds it, and loads the organization.
+    /// </summary>
+    public static async Task<DemoOrganization> CreateAsync(
+        Action<IServiceCollection>? configureServices = null,
+        CancellationToken cancellationToken = default )
     {
-        using ( SecurityContext.RunAsSystem() )
-        {
-            return new DemoOrganization();
-        }
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddInvoicingApplication();
+        configureServices?.Invoke( services );
+
+        var provider = services.BuildServiceProvider( new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true } );
+        await DemoData.InitializeAsync( provider, cancellationToken );
+
+        var org = new DemoOrganization( provider, provider );
+        await org.LoadAsync( cancellationToken );
+
+        return org;
+    }
+
+    /// <summary>
+    /// Loads the organization again in a new scope, with a new database context, from what is saved in the database.
+    /// </summary>
+    public async Task<DemoOrganization> ReloadAsync( CancellationToken cancellationToken = default )
+    {
+        var org = new DemoOrganization( this.RootServices, null );
+        await org.LoadAsync( cancellationToken );
+
+        return org;
     }
 
     /// <summary>
@@ -116,11 +126,46 @@ public sealed class DemoOrganization
     public IDisposable SignIn( User user, IAccessAuditor? auditor = null )
         => SecurityContext.Use( new UserSecurityContext( user, this.Policy, auditor ) );
 
-    private Invoice CreateInvoice( Department department, Customer customer, User creator )
+    public Task SaveChangesAsync( CancellationToken cancellationToken = default ) => this.Db.SaveChangesAsync( cancellationToken );
+
+    public async ValueTask DisposeAsync()
     {
-        using ( SecurityContext.Use( new UserSecurityContext( creator, this.Policy ) ) )
+        await this._scope.DisposeAsync();
+
+        if ( this._ownedProvider != null )
         {
-            return department.CreateInvoice( customer );
+            await this._ownedProvider.DisposeAsync();
         }
+    }
+
+    private async Task LoadAsync( CancellationToken cancellationToken )
+    {
+        var db = this.Db;
+
+        var users = await db.Users.ToDictionaryAsync( u => u.Name, cancellationToken );
+        this.Alice = users["Alice"];
+        this.Ada = users["Ada"];
+        this.Otto = users["Otto"];
+        this.Grace = users["Grace"];
+        this.Mia = users["Mia"];
+        this.Sam = users["Sam"];
+        this.Erin = users["Erin"];
+        this.Tom = users["Tom"];
+        this.Vera = users["Vera"];
+
+        this.Contoso = await db.Companies.SingleAsync( cancellationToken );
+        this.Sales = await db.Departments.SingleAsync( d => d.Code == "SAL", cancellationToken );
+        this.Marketing = await db.Departments.SingleAsync( d => d.Code == "MKT", cancellationToken );
+        this.Engineering = await db.Departments.SingleAsync( d => d.Code == "ENG", cancellationToken );
+
+        this.Fabrikam = await db.Customers.SingleAsync( c => c.Name == "Fabrikam", cancellationToken );
+        this.Northwind = await db.Customers.SingleAsync( c => c.Name == "Northwind Traders", cancellationToken );
+
+        this.SalesInvoice = await db.Invoices.SingleAsync( i => i.Number == "SAL-0001", cancellationToken );
+        this.MarketingInvoice = await db.Invoices.SingleAsync( i => i.Number == "MKT-0001", cancellationToken );
+        this.EngineeringInvoice = await db.Invoices.SingleAsync( i => i.Number == "ENG-0001", cancellationToken );
+
+        this.SalesBudget = await db.Budgets.SingleAsync( b => b.Department.Code == "SAL", cancellationToken );
+        this.EngineeringBudget = await db.Budgets.SingleAsync( b => b.Department.Code == "ENG", cancellationToken );
     }
 }

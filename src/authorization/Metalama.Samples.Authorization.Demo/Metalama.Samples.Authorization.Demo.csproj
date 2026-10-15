@@ -7,6 +7,10 @@
 
     <ItemGroup>
         <PackageReference Include="Metalama.Framework"/>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite"/>
+
+        <!-- EF Core 10 requires Microsoft.Extensions 10, so this project overrides the repository-wide version. -->
+        <PackageReference Include="Microsoft.Extensions.Hosting" VersionOverride="10.0.12"/>
     </ItemGroup>
 
     <ItemGroup>

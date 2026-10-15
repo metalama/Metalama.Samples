@@ -29,7 +29,7 @@ public class PermissionMatrixTests
     [MemberData( nameof(Cases) )]
     public async Task Operation_IsAllowedOnlyToExpectedActors( string operation, Actor actor, bool isAllowed )
     {
-        var org = DemoOrganization.Create();
+        await using var org = await DemoOrganization.CreateAsync();
         var testedOperation = PermissionMatrix.Get( operation );
 
         if ( testedOperation.Arrange != null )
@@ -49,6 +49,9 @@ public class PermissionMatrixTests
                 // Any exception fails the test, including a business-rule exception, which would mean
                 // that the row tests a business rule instead of a permission.
                 await testedOperation.Act( org );
+
+                // Saving the changes as the user must not trigger any check: Entity Framework reads the backing fields.
+                await org.SaveChangesAsync();
             }
             else
             {

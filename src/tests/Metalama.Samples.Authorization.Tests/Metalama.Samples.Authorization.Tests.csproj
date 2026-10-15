@@ -25,6 +25,8 @@
          These links make the same files visible to the IDE and the C# compiler. -->
     <ItemGroup>
         <Compile Include="..\..\authorization\Metalama.Samples.Authorization.Demo\Entity.cs" Link="DemoConfiguration\Entity.cs"/>
+        <Compile Include="..\..\authorization\Metalama.Samples.Authorization.Demo\User.cs" Link="DemoConfiguration\User.cs"/>
+        <Compile Include="..\..\authorization\Metalama.Samples.Authorization.Demo\RoleAssignmentRecord.cs" Link="DemoConfiguration\RoleAssignmentRecord.cs"/>
         <Compile Include="..\..\authorization\Metalama.Samples.Authorization.Demo\AuthorizationFabric.cs" Link="DemoConfiguration\AuthorizationFabric.cs"/>
         <Compile Include="..\..\authorization\Metalama.Samples.Authorization.Demo\DemoPermissions.cs" Link="DemoConfiguration\DemoPermissions.cs"/>
         <Compile Include="..\..\authorization\Metalama.Samples.Authorization.Demo\Finance\FinanceFabric.cs" Link="DemoConfiguration\FinanceFabric.cs"/>

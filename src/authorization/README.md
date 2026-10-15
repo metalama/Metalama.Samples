@@ -20,6 +20,8 @@ This example shows how to enforce a non-trivial authorization model in business 
 
 The framework has two layers.
 
+### Layer 1: the abstract authorization layer
+
 The first layer is abstract. It does not assume any security model. It defines five concepts:
 
 | Concept | Type | Description |
@@ -32,6 +34,8 @@ The first layer is abstract. It does not assume any security model. It defines f
 
 The aspects, the options and the run-time entry point `AccessGuard` belong to this layer. They only ask one question: does the current subject have this permission on this object? The answer comes from the `IAuthorizationPolicy.IsGranted` method, and the abstract layer does not know how the policy computes it.
 
+### Layer 2: the role-based model
+
 The second layer is one implementation of `IAuthorizationPolicy`: the classic role-based access control model, in the `RoleBased` namespace.
 
 * Roles are assigned to subjects on an object, for instance "Mia is department manager of Sales".
@@ -39,6 +43,8 @@ The second layer is one implementation of `IAuthorizationPolicy`: the classic ro
 * Rules allow or deny a permission to a role on a type of object, for instance "department managers are allowed to approve invoices". A rule on a base type also applies to derived types.
 * A permission is granted when at least one rule allows it and no rule denies it.
 * Two roles are built in and never assigned. Every subject has `Everyone`. The `Owner` of an object has `Owner` on this object only.
+
+### Replacing the role-based model
 
 Other security models can replace the role-based layer without any change to the aspects or to the annotated business code. Only the policy and the securable objects change. For instance:
 
@@ -54,7 +60,7 @@ The security framework is separate from the application that uses it:
 | Project | Content |
 |---|---|
 | `Metalama.Samples.Authorization` | The framework: the abstract layer (aspects, options, `AccessGuard`, security context) and the role-based layer. It does not know the invoicing domain. |
-| `Metalama.Samples.Authorization.Demo` | A console application with an invoicing domain that uses the framework. |
+| `Metalama.Samples.Authorization.Demo` | An invoicing application that uses the framework: domain objects stored with Entity Framework Core, application services registered in a dependency injection container, and a console program that runs scenarios. |
 | `tests/Metalama.Samples.Authorization.Tests` | Aspect tests: snapshots of the code that the aspects generate. |
 | `tests/Metalama.Samples.Authorization.UnitTests` | Unit tests of the framework, on small test types. They do not depend on the demo. |
 | `tests/Metalama.Samples.Authorization.Demo.UnitTests` | Unit tests of the security model of the demo application. |
@@ -132,7 +138,7 @@ The generated code calls `AccessGuard.Demand`:
 
 [!metalama-file Metalama.Samples.Authorization/Framework/AccessGuard.cs]
 
-* There is no check in a system scope, opened with `SecurityContext.RunAsSystem()`. Trusted code uses it, for instance to load data from a database.
+* There is no check in a system scope, opened with `SecurityContext.RunAsSystem()`. Trusted code uses it, for instance to seed a database or to build an object after its permission has been checked.
 * Without a current context, the access fails. A missing context is a configuration error, not a reason to skip security.
 * The policy runs in a system scope. The policy reads secured members, such as the owner of the object, and these reads must not trigger checks recursively. The exception message is built in the same scope, because it calls `ToString`.
 * On a denial, the auditor receives the exception before it is thrown.
@@ -149,13 +155,87 @@ The generated code calls `AccessGuard.Demand`:
 
 `RoleBasedSecurable` resolves roles. `Everyone` matches every subject. `Owner` matches the owner of the object itself, and children do not inherit it. Assigned roles are searched on the object and on its security ancestors.
 
+`RoleBasedSecurable` does not store anything. The `Owner` property is abstract, and derived classes store the role assignments through the abstract `GetRoleAssignments`, `AddRoleAssignment` and `RemoveRoleAssignment` methods. `InMemoryRoleBasedSecurable` stores them in a list. The demo stores them in the database. The `[RequiresPermission]` aspect on the abstract `Owner` property is inherited, so every implementation of `Owner` is secured.
+
 [!metalama-file Metalama.Samples.Authorization/RoleBased/RoleBasedSecurable.cs]
 
 ## The demo: invoicing at Contoso
 
 The company Contoso has three departments: Sales, Marketing and Engineering. Departments manage customers, issue invoices and have a yearly budget. An invoice moves through the statuses Draft, Approved, Sent, Paid and Voided.
 
-The roles are the following:
+### The security model from the business point of view
+
+This section describes who may do what, in the words of the business, without reference to the code. A reviewer can compare it with the policy and the tests below. The identifiers, such as `INV-4`, also appear in the permission matrix of the tests.
+
+#### Positions
+
+| Position | Works for | Job |
+|---|---|---|
+| Department manager | one or more departments | Runs the department: approves its invoices, decides the commercial terms of its customers, follows its budget, and staffs it. |
+| Department assistant | one department | Prepares and sends the invoices of the department, and keeps the customer contact details up to date. |
+| Accountant | the whole company | Collects payments, cancels invoices, and manages the budgets. |
+| Auditor | the whole company | Checks the books. Sees everything and changes nothing. |
+| Administrator | the whole company | Manages user accounts and access rights. Is not involved in the business. |
+
+The person who creates an invoice is its owner. A person can hold several positions, for instance an auditor who also manages a department.
+
+#### Company directory
+
+* `DIR-1`: Every user, even without any position, can see the name of the company, the names of the departments, and who holds which position in each department.
+* `DIR-2`: Nobody can rename a department in the application.
+
+#### Invoices
+
+* `INV-1`: The invoice number is not confidential. Every user can see it.
+* `INV-2`: The content of an invoice is visible to the staff of its department, to its owner, to accountants and to auditors. Nobody else can see it, administrators included.
+* `INV-3`: The staff of a department can create invoices for the department, only for a customer whose record they can see (`CUS-1`). For instance, a person who works in Sales and in Marketing can invoice a Sales customer from Marketing.
+* `INV-4`: Before approval, the owner and the staff of the department can edit the invoice. Accountants cannot edit invoice content.
+* `INV-5`: Only a manager of the department can approve an invoice. Nobody can approve an invoice they created (four-eyes principle). An auditor cannot approve, even as a manager.
+* `INV-6`: The staff of the department send the approved invoices to the customer.
+* `INV-7`: Only accountants record payments.
+* `INV-8`: Only accountants cancel (void) invoices.
+* `INV-9`: A manager of the department can give the invoice to another owner.
+* `INV-10`: A manager can move an invoice from one department to another only when they manage both departments.
+
+#### Customers
+
+* `CUS-1`: A customer is managed by one department. Its record is visible to the staff of the department, to accountants and to auditors.
+* `CUS-2`: The staff of the department can change the contact details of the customer.
+* `CUS-3`: The tax ID of a customer is confidential. Only the managers of the department, accountants and auditors can see it. Administrators never see it.
+* `CUS-4`: Only a manager of the department can change the commercial terms of a customer: credit limit and payment terms.
+
+#### Budgets
+
+* `BUD-1`: Budgets are confidential. The budget of a department is visible to its managers, to accountants and to auditors. Department assistants cannot see it.
+* `BUD-2`: Only accountants change budgets and record spending.
+
+#### Access rights
+
+* `ACC-1`: Administrators create user accounts, and assign and revoke positions everywhere.
+* `ACC-2`: A department manager assigns and revokes positions in the departments they manage, and nowhere else.
+* `ACC-3`: A change of position takes effect immediately, for every user.
+
+#### General principles
+
+* `GEN-1`: Separation of duties: an auditor never changes anything, whatever other position they hold.
+* `GEN-2`: Least privilege: administrators manage access, but do not see business data.
+* `GEN-3`: Every refused operation is recorded in a security log.
+* `GEN-4`: Some operations are refused for business reasons, not for security reasons. For instance, an approved invoice cannot be edited, an invoice without lines cannot be approved, and a paid invoice cannot be voided. These refusals are not security events.
+
+#### Questions for the reviewer
+
+The current model has the following properties. They are deliberate in this example, but a real business may decide otherwise:
+
+* A department assistant can overwrite the tax ID of a customer, although they cannot see it (`CUS-2`, `CUS-3`).
+* A department manager can assign any position in their department, including a position with more rights than their own, such as accountant (`ACC-2`). A real system restricts which positions each position may assign.
+* The owner of an invoice keeps access to it after the invoice moves to another department (`INV-2`, `INV-10`).
+* Every user can see who holds which position (`DIR-1`).
+* The rules do not depend on the status of an object. For instance, a manager can change the credit limit of a customer at any time.
+* The rules protect the content of the objects, not their existence. A user can search for invoices that they are not allowed to read; the search returns the invoices, but their content stays protected.
+
+### How the demo implements the model
+
+The positions are roles assigned on the company or on a department, and inherited by the objects below. The owner and the "every user" cases are the built-in roles `Owner` and `Everyone`:
 
 | Role | Scope | Responsibilities |
 |---|---|---|
@@ -166,6 +246,20 @@ The roles are the following:
 | Administrator | company | Assigns and revokes roles everywhere. Sensitive data is denied. |
 | Owner (built in) | object | Reads and edits the invoice they created, but cannot approve it. |
 | Everyone (built in) | all | Reads the company directory. |
+
+The sample data contains one person per typical combination of positions:
+
+| User | Positions |
+|---|---|
+| Alice | Administrator |
+| Ada | Accountant |
+| Otto | Auditor |
+| Grace | Auditor, and manager of Marketing |
+| Mia | Manager of Sales and of Marketing, owner of the marketing invoice |
+| Sam | Assistant in Sales, owner of the sales invoice |
+| Erin | Manager of Engineering |
+| Tom | Assistant in Engineering, owner of the engineering invoice |
+| Vera | No position |
 
 The policy expresses three common security principles with `Deny` rules:
 
@@ -179,22 +273,51 @@ Authorization is a different concern from business rules. The policy answers "ma
 
 Moving an invoice to another department needs a parameter check. `Invoice.TransferTo` requires `ChangeOwnership` on the invoice and on the destination department. Without the second check, a user could move an invoice into a department where they have more rights.
 
-The program signs in as different users and prints the outcome of each scenario. Here is an excerpt:
+The program runs each scenario as a separate request of a user, through the application services, and prints the outcome. The auditor writes the denials to the log. Here is an excerpt:
 
 ```text
 Approving: the four-eyes principle and segregation of duties
   GOOD Mia approves Sam's invoice: succeeded
   GOOD Mia adds a line to the approved invoice (business rule): failed: Invoice SAL-0001 is Approved, expected Draft.
-        [audit] Mia (sales and marketing manager) was denied Approve on Invoice.Approve.
-  GOOD Mia approves her own marketing invoice: was denied: Cannot execute Invoice.Approve: 'Mia (sales and marketing manager)' does not have the Approve permission on 'invoice MKT-0001'.
-        [audit] Grace (auditor, marketing manager) was denied Approve on Invoice.Approve.
-  GOOD Grace, marketing manager but also auditor, approves the marketing invoice: was denied: Cannot execute Invoice.Approve: 'Grace (auditor, marketing manager)' does not have the Approve permission on 'invoice MKT-0001'.
+warn: Metalama.Samples.Authorization.Demo.Services.LoggingAccessAuditor[277457468] Mia was denied Approve on Invoice.Approve of 'invoice MKT-0001'.
+  GOOD Mia approves her own marketing invoice: was denied: Cannot execute Invoice.Approve: 'Mia' does not have the Approve permission on 'invoice MKT-0001'.
+warn: Metalama.Samples.Authorization.Demo.Services.LoggingAccessAuditor[277457468] Grace was denied Approve on Invoice.Approve of 'invoice MKT-0001'.
+  GOOD Grace, marketing manager but also auditor, approves the marketing invoice: was denied: Cannot execute Invoice.Approve: 'Grace' does not have the Approve permission on 'invoice MKT-0001'.
 ...
 Moving an invoice: checking the parameter
-  GOOD Mia moves a draft from Sales to Marketing, which she also manages: succeeded
-        [audit] Mia (sales and marketing manager) was denied ChangeOwnership on Invoice.TransferTo(target).
-  GOOD Mia moves the draft to Engineering: was denied: Cannot execute Invoice.TransferTo(target): 'Mia (sales and marketing manager)' does not have the ChangeOwnership permission on 'Engineering'.
+  GOOD Mia creates a sales invoice: succeeded
+  GOOD Mia moves it to Marketing, which she also manages: succeeded
+warn: Metalama.Samples.Authorization.Demo.Services.LoggingAccessAuditor[277457468] Mia was denied ChangeOwnership on Invoice.TransferTo(target) of 'Engineering'.
+  GOOD Mia moves it to Engineering: was denied: Cannot execute Invoice.TransferTo(target): 'Mia' does not have the ChangeOwnership permission on 'Engineering'.
 ```
+
+## Persistence and dependency injection
+
+The demo is structured like a real application. The domain objects are stored with Entity Framework Core (code first) in an in-memory SQLite database, and the application services are registered in a dependency injection container:
+
+[!metalama-file Metalama.Samples.Authorization.Demo/Services/ServiceCollectionExtensions.cs]
+
+The services, such as `InvoiceService`, load the objects, call the domain methods, and save the changes. They contain no permission check: the domain objects enforce them, whichever code calls them. A service checks a permission explicitly only for an operation that has no secured object. For instance, `StaffService.CreateUserAsync` calls `AccessGuard.Demand` on the company, because a user account is not a securable object.
+
+`RequestRunner` plays the role of the authentication middleware of a web application. It creates a dependency injection scope, which has its own database context, loads the user, and sets `SecurityContext.Current` while the request runs:
+
+[!metalama-file Metalama.Samples.Authorization.Demo/Services/RequestRunner.cs]
+
+`SecurityContext.Current` is stored in an `AsyncLocal<T>`. A value set inside an awaited method is not visible to the caller of this method, so the context must be set in the method that awaits the request, as `RequestRunner` does.
+
+### Entity Framework and the secured members
+
+Entity Framework reads and writes every mapped property when it loads an object, detects changes, and saves them. These operations belong to the infrastructure, not to the user, and they often run without a security context. They must not go through the secured accessors. The demo follows these rules:
+
+* The model uses `PropertyAccessMode.Field`. Entity Framework reads and writes the backing fields directly, including the fields that Metalama generates when it overrides an auto-property.
+* The constructor that Entity Framework uses must not call a secured setter. Each entity has a private constructor for Entity Framework that only sets fields, or that chains to a primary constructor whose parameters initialize the properties. A property initializer sets the backing field and runs no check.
+* The storage members of `Entity`, which hold the owner and the role assignments, are excluded from default securing with `[AuthorizationOptions( IsDefaultSecuringEnabled = false )]`. The public `Owner` and `RoleAssignments` members are the secured views of these members, and the model ignores them.
+* The navigations that the security model needs are loaded automatically with `AutoInclude`: the parent chain of each object, its owner, and its role assignments. Otherwise, a role inherited from a parent that is not loaded would be missed. The policy would then deny the access, which is safe but wrong.
+* By convention, Entity Framework maps only the properties that have a setter. The get-only properties that expose the state of an object, such as `Invoice.Status`, are mapped explicitly. A test checks that every field of every entity is mapped.
+
+[!metalama-file Metalama.Samples.Authorization.Demo/Data/InvoicingDbContext.cs]
+
+A connection to an in-memory SQLite database cannot be used by concurrent requests. `InMemoryDatabase` keeps a named, shared-cache in-memory database open, and each database context opens its own connection to it.
 
 ## Tests
 
@@ -202,7 +325,7 @@ Moving an invoice: checking the parameter
 
 The aspect tests in `Metalama.Samples.Authorization.Tests` verify the generated code. They cover each kind of target (methods, `async` methods, properties, `init` accessors, fields, method and constructor parameters), default permissions, inheritance by overrides and by abstract members, each level of options, and the eligibility errors.
 
-Two tests, `Demo_SalesConventions` and `Demo_FinanceConventions`, compile the real configuration of the demo application with `// @Include` directives: the `Entity` base class, the project fabric, the namespace fabric and the permission names. They show the code that this configuration generates. For instance, in the `Finance` namespace:
+Two tests, `Demo_SalesConventions` and `Demo_FinanceConventions`, compile the real configuration of the demo application with `// @Include` directives: the `Entity` base class and its storage types, the project fabric, the namespace fabric and the permission names. They show the code that this configuration generates. For instance, in the `Finance` namespace:
 
 [!metalama-compare ../tests/Metalama.Samples.Authorization.Tests/Demo_FinanceConventions.cs]
 
@@ -221,21 +344,25 @@ Two tests, `Demo_SalesConventions` and `Demo_FinanceConventions`, compile the re
 Its core is a permission matrix. Each row is an operation of the application with the set of users allowed to perform it:
 
 ```csharp
-Op( "Approve a sales invoice", org => org.SalesInvoice.Approve(), Mia ),
-Op( "Read a customer tax ID", org => _ = org.Fabrikam.TaxId, Mia, Ada, Otto, Grace ),
+Op( "INV-5: Approve a sales invoice", org => org.SalesInvoice.Approve(), Mia ),
+Op( "CUS-3: Read a customer tax ID", org => _ = org.Fabrikam.TaxId, Mia, Ada, Otto, Grace ),
 ```
 
-The `PermissionMatrixTests` theory runs every operation as every user, on a fresh organization. The operation must succeed for the users of the row and throw `AccessDeniedException` for all the others. Each row therefore checks both the grants and the denials, and adding a row is enough to cover a new operation. The rows describe the intended business rules, independently of how `DemoPolicy` implements them. The matrix found a gap during the development of this example: an auditor who was also a department manager could create invoices.
+Each row starts with the identifier of the business requirement that it checks (see [The security model from the business point of view](#the-security-model-from-the-business-point-of-view)), so the name of each test case gives the requirement, the operation, the user and the expected outcome.
+
+The `PermissionMatrixTests` theory runs every operation as every user, on a fresh database. The objects are loaded from the database before the operation. The operation must succeed for the users of the row and throw `AccessDeniedException` for all the others. After a successful operation, the test saves the changes as the user, which must not trigger any check. Each row therefore checks both the grants and the denials, and adding a row is enough to cover a new operation. The rows describe the intended business rules, independently of how `DemoPolicy` implements them. The matrix found a gap during the development of this example: an auditor who was also a department manager could create invoices.
 
 The other test classes cover what a single operation cannot show:
 
 * `WorkflowTests`: the invoice lifecycle, role changes that take effect immediately, transfers that change who inherits access, and the difference between a denied permission and a broken business rule.
 * `OptionsBehaviorTests`: proof at run time that each build-time option took effect.
 * `AuditTests`: the content of audit records for the demo operations.
+* `PersistenceTests`: loading and saving run no check; every field of every entity is mapped; authorized changes and role assignments are persisted and effective in a new database context; denied changes leave the database unchanged; queries are not filtered; and complete workflows run through the services as separate requests, including concurrent requests of different users.
 
 ## Limitations
 
 * The policy evaluates the rules on each access and does not cache decisions. Each check allocates a `Permission` and walks the type hierarchy and the role assignments.
 * Rules apply to types, not to object states. "Only draft invoices can be edited" is a business rule in the `Invoice` methods.
 * A department manager can assign any role in their department, including roles with more rights. A real system restricts which roles each role may assign.
-* Data is not persisted.
+* The aspects protect members, not rows. A user without any role can query invoices, but cannot read their members. To filter rows, use another mechanism, for instance an Entity Framework global query filter.
+* The demo uses an in-memory database, created and seeded at startup.

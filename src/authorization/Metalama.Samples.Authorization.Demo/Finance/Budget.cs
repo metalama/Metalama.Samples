@@ -11,6 +11,9 @@ public sealed class Budget( Department department, int fiscalYear, decimal amoun
     private decimal _amount = amount;
     private decimal _spent;
 
+    // Used by Entity Framework, which then sets the backing fields.
+    private Budget() : this( null!, 0, 0 ) { }
+
     public Department Department { get; } = department;
 
     public int FiscalYear { get; } = fiscalYear;

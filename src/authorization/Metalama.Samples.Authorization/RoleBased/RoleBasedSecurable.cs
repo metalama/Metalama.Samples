@@ -1,36 +1,58 @@
 namespace Metalama.Samples.Authorization.RoleBased;
 
 /// <summary>
-/// Base class for objects secured by <see cref="RoleBasedAuthorizationPolicy"/>. It stores the owner and the role
-/// assignments of the object, and resolves roles through the <see cref="SecurityParent"/> chain.
+/// Base class for objects secured by <see cref="RoleBasedAuthorizationPolicy"/>. It implements role resolution:
+/// built-in roles, assigned roles, and inheritance through the <see cref="SecurityParent"/> chain.
 /// </summary>
+/// <remarks>
+/// <para>The class does not store anything. Derived classes store the owner and the role assignments, for instance
+/// in memory or in a database mapped with Entity Framework.</para>
+/// <para>The members that the security infrastructure calls are excluded from default securing. Because options are
+/// inherited by overriding members, the exclusion also applies to the overrides in derived classes.</para>
+/// </remarks>
 public abstract class RoleBasedSecurable : IRoleBasedSecurable
 {
-    private readonly List<RoleAssignment> _roleAssignments = [];
-
     /// <summary>
     /// Gets or sets the owner of the object, who has the built-in <see cref="Role.Owner"/> role on it.
     /// </summary>
+    /// <remarks>
+    /// The aspect is inherited, so the overrides in derived classes are secured.
+    /// </remarks>
     [RequiresPermission( PermissionNames.Read, PermissionNames.ChangeOwnership )]
-    public ISubject? Owner { get; set; }
+    public abstract ISubject? Owner { get; set; }
 
     /// <summary>
     /// Gets the roles assigned on this object. Assignments inherited from the security parent are not included.
     /// </summary>
     [RequiresPermission( PermissionNames.Read )]
-    public IReadOnlyList<RoleAssignment> RoleAssignments => this._roleAssignments;
+    public IReadOnlyList<RoleAssignment> RoleAssignments => [.. this.GetRoleAssignments()];
 
     /// <summary>
     /// Gets the object from which this object inherits role assignments, or <c>null</c>.
     /// </summary>
-    /// <remarks>
-    /// The security infrastructure reads this property, so it is excluded from default securing. Because options
-    /// are inherited by overriding members, the exclusion also applies to overrides in derived classes.
-    /// </remarks>
     [AuthorizationOptions( IsDefaultSecuringEnabled = false )]
     protected abstract IRoleBasedSecurable? SecurityParent { get; }
 
     IRoleBasedSecurable? IRoleBasedSecurable.SecurityParent => this.SecurityParent;
+
+    /// <summary>
+    /// Returns the role assignments stored on this object.
+    /// </summary>
+    [AuthorizationOptions( IsDefaultSecuringEnabled = false )]
+    protected abstract IEnumerable<RoleAssignment> GetRoleAssignments();
+
+    /// <summary>
+    /// Stores a new role assignment on this object. The assignment is not stored yet.
+    /// </summary>
+    [AuthorizationOptions( IsDefaultSecuringEnabled = false )]
+    protected abstract void AddRoleAssignment( RoleAssignment assignment );
+
+    /// <summary>
+    /// Removes a role assignment stored on this object.
+    /// </summary>
+    /// <returns><c>true</c> if the assignment existed, otherwise <c>false</c>.</returns>
+    [AuthorizationOptions( IsDefaultSecuringEnabled = false )]
+    protected abstract bool RemoveRoleAssignment( RoleAssignment assignment );
 
     /// <summary>
     /// Assigns a role to a subject on this object.
@@ -45,9 +67,9 @@ public abstract class RoleBasedSecurable : IRoleBasedSecurable
 
         var assignment = new RoleAssignment( subject, role );
 
-        if ( !this._roleAssignments.Contains( assignment ) )
+        if ( !this.GetRoleAssignments().Contains( assignment ) )
         {
-            this._roleAssignments.Add( assignment );
+            this.AddRoleAssignment( assignment );
         }
     }
 
@@ -56,7 +78,7 @@ public abstract class RoleBasedSecurable : IRoleBasedSecurable
     /// </summary>
     /// <returns><c>true</c> if the assignment existed, otherwise <c>false</c>.</returns>
     [RequiresPermission( PermissionNames.ManageRoles )]
-    public bool RevokeRole( ISubject subject, Role role ) => this._roleAssignments.Remove( new RoleAssignment( subject, role ) );
+    public bool RevokeRole( ISubject subject, Role role ) => this.RemoveRoleAssignment( new RoleAssignment( subject, role ) );
 
     /// <inheritdoc />
     public bool HasRole( ISubject subject, Role role )
@@ -72,10 +94,11 @@ public abstract class RoleBasedSecurable : IRoleBasedSecurable
             return subject.Equals( this.Owner );
         }
 
+        var assignment = new RoleAssignment( subject, role );
+
         for ( IRoleBasedSecurable? ancestor = this; ancestor != null; ancestor = ancestor.SecurityParent )
         {
-            if ( ancestor is RoleBasedSecurable securable
-                 && securable._roleAssignments.Contains( new RoleAssignment( subject, role ) ) )
+            if ( ancestor is RoleBasedSecurable securable && securable.GetRoleAssignments().Contains( assignment ) )
             {
                 return true;
             }

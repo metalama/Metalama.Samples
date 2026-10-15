@@ -6,9 +6,13 @@ namespace Metalama.Samples.Authorization.Demo.UnitTests;
 /// <summary>
 /// Run-time proof that the build-time <see cref="AuthorizationOptions"/> of the demo project took effect.
 /// </summary>
-public class OptionsBehaviorTests
+public class OptionsBehaviorTests : IAsyncLifetime
 {
-    private readonly DemoOrganization _org = DemoOrganization.Create();
+    private DemoOrganization _org = null!;
+
+    public async Task InitializeAsync() => this._org = await DemoOrganization.CreateAsync();
+
+    public async Task DisposeAsync() => await this._org.DisposeAsync();
 
     private AccessDeniedException Denial( User user, Action action )
     {

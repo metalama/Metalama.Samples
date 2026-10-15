@@ -9,6 +9,9 @@ namespace Metalama.Samples.Authorization.Demo;
 /// </summary>
 public sealed class Department( Company company, string code, string name ) : Entity
 {
+    // Used by Entity Framework, which then sets the backing fields.
+    private Department() : this( null!, null!, null! ) { }
+
     public Company Company { get; } = company;
 
     public string Code { get; } = code;
@@ -25,7 +28,7 @@ public sealed class Department( Company company, string code, string name ) : En
 
     /// <summary>
     /// Creates a draft invoice owned by the current user. The user must be allowed to create invoices
-    /// in this department, and to read <paramref name="customer"/>.
+    /// in this department, and to read <paramref name="customer"/>. The caller adds the invoice to the database.
     /// </summary>
     [RequiresPermission( DemoPermissions.CreateInvoice )]
     public Invoice CreateInvoice( [RequiresPermission( PermissionNames.Read )] Customer customer )

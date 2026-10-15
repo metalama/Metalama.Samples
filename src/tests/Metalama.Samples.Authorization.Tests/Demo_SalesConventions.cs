@@ -3,6 +3,8 @@
 
 #if TEST_OPTIONS
 // @Include(../../authorization/Metalama.Samples.Authorization.Demo/Entity.cs)
+// @Include(../../authorization/Metalama.Samples.Authorization.Demo/User.cs)
+// @Include(../../authorization/Metalama.Samples.Authorization.Demo/RoleAssignmentRecord.cs)
 // @Include(../../authorization/Metalama.Samples.Authorization.Demo/AuthorizationFabric.cs)
 // @Include(../../authorization/Metalama.Samples.Authorization.Demo/DemoPermissions.cs)
 // @Include(../../authorization/Metalama.Samples.Authorization.Demo/Finance/FinanceFabric.cs)

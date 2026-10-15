@@ -19,6 +19,14 @@ public sealed class Invoice : Entity
     private InvoiceStatus _status;
     private decimal _amountPaid;
 
+    // Used by Entity Framework, which then sets the backing fields. A constructor must not call a secured setter:
+    // Entity Framework runs it when loading the invoice, typically without any permission.
+    private Invoice()
+    {
+        this._department = null!;
+        this.Number = null!;
+    }
+
     internal Invoice( Department department, Customer customer, string number )
     {
         this._department = department;
@@ -34,7 +42,7 @@ public sealed class Invoice : Entity
     [AuthorizationOptions( IsDefaultSecuringEnabled = false )]
     public string Number { get; }
 
-    public Customer Customer { get; set; }
+    public Customer Customer { get; set; } = null!;
 
     public DateOnly DueDate { get; set; }
 
@@ -79,13 +87,15 @@ public sealed class Invoice : Entity
         this._status = InvoiceStatus.Approved;
     }
 
+    /// <summary>
+    /// Sends the approved invoice to the customer through <paramref name="sender"/>.
+    /// </summary>
     [RequiresPermission( DemoPermissions.Send )]
-    public async Task SendAsync( CancellationToken cancellationToken = default )
+    public async Task SendAsync( IInvoiceSender sender, CancellationToken cancellationToken = default )
     {
         this.EnsureStatus( InvoiceStatus.Approved );
 
-        // Simulates sending the invoice by email.
-        await Task.Delay( 10, cancellationToken );
+        await sender.SendAsync( this, cancellationToken );
 
         this._status = InvoiceStatus.Sent;
     }

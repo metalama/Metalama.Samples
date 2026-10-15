@@ -2,9 +2,13 @@ using Xunit;
 
 namespace Metalama.Samples.Authorization.Demo.UnitTests;
 
-public class AuditTests
+public class AuditTests : IAsyncLifetime
 {
-    private readonly DemoOrganization _org = DemoOrganization.Create();
+    private DemoOrganization _org = null!;
+
+    public async Task InitializeAsync() => this._org = await DemoOrganization.CreateAsync();
+
+    public async Task DisposeAsync() => await this._org.DisposeAsync();
     private readonly RecordingAuditor _auditor = new();
 
     [Fact]
@@ -43,7 +47,7 @@ public class AuditTests
             var exception = Assert.Throws<AccessDeniedException>( () => _ = this._org.SalesInvoice.Total );
 
             Assert.Equal(
-                "Cannot read Invoice.Total: 'Tom (engineering assistant)' does not have the Read permission on 'invoice SAL-0001'.",
+                "Cannot read Invoice.Total: 'Tom' does not have the Read permission on 'invoice SAL-0001'.",
                 exception.Message );
         }
     }

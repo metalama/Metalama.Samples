@@ -6,7 +6,7 @@ namespace Metalama.Samples.Authorization.UnitTests;
 
 public sealed record TestUser( string Name ) : ISubject;
 
-public class Folder : RoleBasedSecurable
+public class Folder : InMemoryRoleBasedSecurable
 {
     public Folder? Parent { get; init; }
 

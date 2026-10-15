@@ -13,6 +13,9 @@ namespace Metalama.Samples.Authorization.Demo.Sales;
 [AuthorizationOptions( DefaultWritePermission = DemoPermissions.Approve )]
 public sealed class Customer( Department department, string name ) : Entity
 {
+    // Used by Entity Framework, which then sets the backing fields.
+    private Customer() : this( null!, null! ) { }
+
     public Department Department { get; set; } = department;
 
     [AuthorizationOptions( DefaultWritePermission = PermissionNames.Write )]
