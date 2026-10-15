@@ -1,7 +1,10 @@
-namespace Metalama.Samples.Authorization.RoleBased;
+using Metalama.Samples.Authorization.RoleBased;
+
+namespace Metalama.Samples.Authorization.UnitTests;
 
 /// <summary>
-/// A <see cref="RoleBasedSecurable"/> that stores its owner and role assignments in memory.
+/// A <see cref="RoleBasedSecurable"/> that stores its owner and role assignments in memory, for the tests of the
+/// framework. The demo application stores them with Entity Framework (see <c>EfRoleBasedSecurable</c>).
 /// </summary>
 public abstract class InMemoryRoleBasedSecurable : RoleBasedSecurable
 {

@@ -106,27 +106,13 @@ public sealed class InvoicingDbContext( DbContextOptions<InvoicingDbContext> opt
         owned.HasKey( "Id" );
     }
 
-    // Maps the storage members of Entity: the owner and the role assignments.
+    // Maps an entity: the storage of its owner and role assignments, by EfRoleBasedSecurable.
     private static ModelBuilder ConfigureSecurable<T>( ModelBuilder modelBuilder )
         where T : Entity
         => modelBuilder.Entity<T>(
             entity =>
             {
-                // The public members are the secured, computed views of the storage members.
-                entity.Ignore( e => e.Owner );
-                entity.Ignore( e => e.RoleAssignments );
+                entity.ConfigureRoleBasedStorage();
                 entity.Ignore( e => e.SecurityLabel );
-
-                entity.HasOne<User>( "OwnerUser" ).WithMany();
-                entity.Navigation( "OwnerUser" ).AutoInclude();
-
-                entity.OwnsMany<RoleAssignmentRecord>(
-                    "RoleAssignmentRecords",
-                    record =>
-                    {
-                        UseSingleColumnKey( record );
-                        record.HasOne( r => r.User ).WithMany();
-                        record.Navigation( r => r.User ).AutoInclude();
-                    } );
             } );
 }

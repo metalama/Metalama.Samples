@@ -20,7 +20,7 @@ public sealed class SystemScopeMaterializationInterceptor : IMaterializationInte
     {
         var type = materializationData.EntityType.ClrType;
 
-        if ( !typeof(Entity).IsAssignableFrom( type ) )
+        if ( !typeof(EfRoleBasedSecurable).IsAssignableFrom( type ) )
         {
             return result;
         }

@@ -237,7 +237,7 @@ A `RoleBasedAuthorizationPolicyBuilder` collects the rules, and its `Build` meth
 
 Nobody can assign a role to themself. Without this rule, anyone who manages roles could give themself any right.
 
-`RoleBasedSecurable` does not store anything. The `Owner` property is abstract, and derived classes store the role assignments through the abstract `GetRoleAssignments`, `AddRoleAssignment` and `RemoveRoleAssignment` methods. `InMemoryRoleBasedSecurable` stores them in a list. The demo stores them in the database. The `[RequiresPermission]` aspect on the abstract `Owner` property is inherited, so every implementation of `Owner` is secured.
+`RoleBasedSecurable` does not store anything. The `Owner` property is abstract, and derived classes store the role assignments through the abstract `GetRoleAssignments`, `AddRoleAssignment` and `RemoveRoleAssignment` methods. The framework ships no storage: the demo stores them with Entity Framework in `EfRoleBasedSecurable`, and the framework tests use a small in-memory implementation. The `[RequiresPermission]` aspect on the abstract `Owner` property is inherited, so every implementation of `Owner` is secured.
 
 [!metalama-file Metalama.Samples.Authorization/RoleBased/RoleBasedSecurable.cs]
 
@@ -402,7 +402,7 @@ Entity Framework reads and writes every mapped property when it loads an object,
 * The model uses `PropertyAccessMode.Field`. Entity Framework reads and writes the backing fields directly, including the fields that Metalama generates when it overrides an auto-property.
 * `SystemScopeMaterializationInterceptor` creates each entity in a system scope, with its parameterless constructor, which can be private. Constructors can therefore set secured properties, for instance by chaining to the constructor that the application uses. The scope is closed by a `using` statement, so it cannot remain open after a failure.
 * Entity Framework fills collections through their backing field, before the first access through the property, so a `GuardedList<T>` has no owner yet and checks nothing. A primitive collection, such as `Invoice.Notes`, is assigned by Entity Framework when it loads the object, so a value converter recreates a `GuardedList<T>`.
-* The storage members of `Entity`, which hold the owner and the role assignments, are excluded from default securing with `[AuthorizationOptions( IsDefaultSecuringEnabled = false )]`. The public `Owner` and `RoleAssignments` members are the guarded views of these members, and the model ignores them.
+* `EfRoleBasedSecurable`, the base class of `Entity`, stores the owner as a `User` navigation and the role assignments as an owned collection of `RoleAssignmentRecord`. `ConfigureRoleBasedStorage` maps them for each entity class. These storage members are excluded from default securing with `[AuthorizationOptions( IsDefaultSecuringEnabled = false )]`. The public `Owner` and `RoleAssignments` members are the secured views of these members, and the model ignores them.
 * The navigations that the security model needs are loaded automatically with `AutoInclude`: the parent chain of each object, its owner, and its role assignments. Otherwise, a role inherited from a parent that is not loaded would be missed. The policy would then deny the access, which is safe but wrong.
 * By convention, Entity Framework maps only the properties that have a setter. The get-only properties that expose the state of an object, such as `Invoice.Status`, are mapped explicitly. A test checks that every field of every entity is mapped.
 
@@ -414,7 +414,7 @@ A connection to an in-memory SQLite database cannot be used by concurrent reques
 
 ### Aspect tests
 
-The aspect tests in `Metalama.Samples.Authorization.Tests` verify the generated code. They cover each kind of target (methods, `async` methods, properties, `init` accessors, fields, explicit interface implementations, method and constructor parameters), default permissions, inheritance by overrides and by abstract members, each level of options, the eligibility errors, the guarded views of collections, and the warnings of the validator.
+The aspect tests in `Metalama.Samples.Authorization.Tests` verify the generated code. They cover each kind of target (methods, `async` methods, properties, `init` accessors, fields, explicit interface implementations, method and constructor parameters), default permissions, inheritance by overrides and by abstract members, each level of options, the eligibility errors, the guarded lists of collection properties, and the warnings of the validator.
 
 Two tests, `Demo_SalesConventions` and `Demo_FinanceConventions`, compile the real configuration of the demo application with `// @Include` directives: the `Entity` base class and its storage types, the project fabric, the namespace fabric and the permission names. They show the code that this configuration generates. For instance, in the `Finance` namespace:
 

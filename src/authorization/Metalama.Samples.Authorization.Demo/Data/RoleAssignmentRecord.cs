@@ -1,10 +1,10 @@
 using Metalama.Samples.Authorization.RoleBased;
 
-namespace Metalama.Samples.Authorization.Demo;
+namespace Metalama.Samples.Authorization.Demo.Data;
 
 /// <summary>
 /// The database representation of a <see cref="RoleAssignment"/>: a user and the name of a role.
-/// Entity Framework stores it as an owned collection of each <see cref="Entity"/>.
+/// Entity Framework stores it as an owned collection of each <see cref="EfRoleBasedSecurable"/>.
 /// </summary>
 public sealed class RoleAssignmentRecord
 {
