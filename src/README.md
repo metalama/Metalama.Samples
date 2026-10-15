@@ -3,7 +3,7 @@ uid: samples
 summary: "The document provides tutorial examples for using Metalama, covering topics like validation, logging, caching, exception handling, property change notification, change tracking, cloning, memento pattern, enum view-model, shared fabric, and ToString implementation."
 keywords: "Metalama examples, Metalama samples"
 created-date: 2023-03-28
-modified-date: 2024-09-09
+modified-date: 2026-10-15
 ---
 
 # Commented examples
@@ -16,7 +16,7 @@ This chapter shows a few examples that demonstrate how to use Metalama. Each of 
 | [Logging](log/README.md)                                  | Shows several logging aspects, adding complexity at every step.                                                |
 | [Caching](caching/README.md)                              | Caches the method return value as a function of its parameters.                                                 |
 | [Exception Handling](exception-handling/README.md)        | Demonstrates several exception-handling strategies including retry, [Polly](https://github.com/App-vNext/Polly), and adding parameter values for richer reports. |
-| [INotifyPropertyChanged](notifypropertychanged/README.md) | Automatically implements the <xref:System.ComponentModel.INotifyPropertyChanged> interface and instruments properties. |
+| [INotifyPropertyChanged](notifypropertychanged/README.md) | Implements the <xref:System.ComponentModel.INotifyPropertyChanged> interface. Shows the [ready-made aspect](notifypropertychanged/observability/README.md) of `Metalama.Patterns.Observability` for production code, and a [custom aspect](notifypropertychanged/custom/README.md) built step by step for didactic purposes. |
 | [Change Tracking](change-tracking/README.md)              | Automatically implements the <xref:System.ComponentModel.IChangeTracking> or <xref:System.ComponentModel.IRevertibleChangeTracking> interface  interface and instruments fields and properties accordingly.                      |
 | [Clone](clone/README.md)                                  | Implements the _Deep Clone_ pattern.                                                                             |
 | [Memento](memento/README.md)                              | Implements the classic _Memento_ pattern.
@@ -26,6 +26,7 @@ This chapter shows a few examples that demonstrate how to use Metalama. Each of 
 | [Builder](builder/README.md)                              | Implements the Builder pattern, i.e. a mutable `Builder` type nested inside an immutable type. |
 | [Equatable](comparison/README.md)                            | Implements the complete equality comparison pattern, including the `IEquatable<T>` method, and more. |
 | [Tracing calls](call-tracing/README.md)                   | Traces the calls to a library from one file, with interceptors, to investigate a problem without a debugger. |
+| [Singleton](singleton/README.md)                          | Generates the boilerplate of the Singleton pattern and enforces it, with or without dependency injection. |
 
 If you have developed an original aspect with Metalama, consider [contributing](contributing.md) to this list.
 
