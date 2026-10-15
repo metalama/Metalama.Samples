@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <Configurations>Debug;Release;Record</Configurations>
+    </PropertyGroup>
+
+    <!-- The Record configuration records the interactions of the legacy code with its dependencies. -->
+    <PropertyGroup Condition="'$(Configuration)'=='Record'">
+        <DefineConstants>$(DefineConstants);RECORD_INTERACTIONS</DefineConstants>
+
+        <!-- The documentation uses the HTML files of the default build. -->
+        <MetalamaWriteHtml>False</MetalamaWriteHtml>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Metalama.Framework"/>
+        <PackageReference Include="Metalama.Extensions.Interceptors"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Update="reminder-template.txt" CopyToOutputDirectory="PreserveNewest"/>
+    </ItemGroup>
+
+</Project>

@@ -1,0 +1,5 @@
+Dear customer,
+
+Invoice {Number} is {DaysOverdue} days overdue. The amount due is {Amount} EUR.
+
+Billing department
