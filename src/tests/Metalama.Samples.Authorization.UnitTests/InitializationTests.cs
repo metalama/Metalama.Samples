@@ -72,4 +72,71 @@ public class InitializationTests
     [Fact]
     public void WithoutContext_ConstructorFailsClosed()
         => Assert.Throws<InvalidOperationException>( () => new Report( "Draft" ) );
+
+    [Fact]
+    public void RootClass_KeepsItsParameterlessConstructor()
+    {
+        // NotRoleBased implements ISecurable directly, so it is the first class of its hierarchy that receives the
+        // initializers. Reflection and the new() constraint need its parameterless constructor.
+        Assert.NotNull( Activator.CreateInstance<NotRoleBased>() );
+        Assert.NotNull( Create<NotRoleBased>() );
+    }
+
+    private static T Create<T>()
+        where T : new()
+        => new();
+
+    [Fact]
+    public void ObjectCreatedAtARewrittenCallSite_IsInitialized()
+    {
+        using ( SignIn( this._userWithoutRights ) )
+        {
+            ISecurable report = new Report( "Draft" );
+
+            Assert.True( report.IsInitialized );
+        }
+    }
+
+    [Fact]
+    public void ObjectWhoseInitializationDidNotEnd_IsUnusable()
+    {
+        Report report;
+
+        using ( SignIn( this._userWithoutRights ) )
+        {
+            // Metalama cannot rewrite a call through reflection, so Initialize is not called.
+            report = Activator.CreateInstance<Report>();
+
+            Assert.False( ((ISecurable) report).IsInitialized );
+
+            // The creator can still set the properties, as an object initializer does, but cannot read the object
+            // or call its methods.
+            report.Body = "Changed";
+            Assert.Throws<InvalidOperationException>( () => report.Body );
+            Assert.Throws<InvalidOperationException>( () => report.Publish() );
+        }
+
+        // Another execution context cannot use the object at all, even to set a property.
+        using ( SignIn( this._readerUser ) )
+        {
+            Assert.Throws<InvalidOperationException>( () => report.Body = "Changed again" );
+        }
+    }
+
+    [Fact]
+    public void CompleteInitialization_MakesTheObjectUsable()
+    {
+        using ( SignIn( this._userWithoutRights ) )
+        {
+            var report = Activator.CreateInstance<Report>();
+            report.Body = "Draft";
+
+            ((ISecurable) report).CompleteInitialization();
+
+            Assert.True( ((ISecurable) report).IsInitialized );
+
+            // The object is checked like any other.
+            Assert.Throws<AccessDeniedException>( () => report.Body );
+        }
+    }
 }

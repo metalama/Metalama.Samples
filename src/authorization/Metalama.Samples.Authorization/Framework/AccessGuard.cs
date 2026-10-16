@@ -22,17 +22,17 @@ public static class AccessGuard
             return;
         }
 
-        var context = GetContext( member );
-        Permission requiredPermission = permission;
-
-        // The caller of a constructor has unlimited rights on the object until its initialization ends
-        // (see SecurityContext.BeginInitialization). The access is not cached, but it is audited like a grant.
-        if ( SecurityContext.IsInitializing( securable ) )
+        // An object that is being initialized is set up by its creator with unlimited rights, and is not usable by
+        // anybody else (see SecurityContext.BeginInitialization).
+        if ( SecurityContext.TryGetInitializationState( securable, out var initializationState ) )
         {
-            AuditGrant( context, securable, requiredPermission, member, accessKind );
+            DemandDuringInitialization( securable, permission, member, accessKind, initializationState );
 
             return;
         }
+
+        var context = GetContext( member );
+        Permission requiredPermission = permission;
 
         // The decision is cached in the current execution context (see SecurityContext). Each access is still
         // audited, because the auditor records accesses, not decisions.
@@ -65,6 +65,29 @@ public static class AccessGuard
         }
 
         AuditGrant( context, securable, requiredPermission, member, accessKind );
+    }
+
+    private static void DemandDuringInitialization(
+        ISecurable securable,
+        Permission permission,
+        string member,
+        AccessKind accessKind,
+        InitializationState state )
+    {
+        // While the constructors run, the creator has unlimited rights. After them, it can only set properties, as the
+        // object initializer does. The access is not cached, but it is audited like a grant.
+        if ( SecurityContext.IsInitializing( securable )
+             && (state == InitializationState.Constructing || accessKind == AccessKind.Write) )
+        {
+            AuditGrant( GetContext( member ), securable, permission, member, accessKind );
+
+            return;
+        }
+
+        throw new InvalidOperationException(
+            $"Cannot access {member}: the object is not initialized. Its initialization ends after the object initializer, " +
+            $"at a call site compiled by Metalama. An object created in another way, for instance by reflection, must be " +
+            $"initialized with {nameof(ISecurable)}.{nameof(ISecurable.CompleteInitialization)}." );
     }
 
     // The permissions whose operations change the owner or the role assignments of an object, which the role-based

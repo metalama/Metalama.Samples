@@ -73,6 +73,7 @@ public sealed class SecurableTypeAttribute : TypeAspect
         // The object is being initialized from the first constructor that runs until the end of the object
         // initializer. The call sites of the constructors call Initialize after the object initializer.
         builder.AddInitializer( nameof(this.BeginInitialization), InitializerKind.BeforeInstanceConstructor );
+        builder.AddInitializer( nameof(this.EndConstruction), InitializerKind.AfterLastInstanceConstructor );
         builder.AddInitializer( nameof(this.EndInitialization), InitializerKind.AfterObjectInitializer );
 
         builder.Outbound
@@ -195,6 +196,9 @@ public sealed class SecurableTypeAttribute : TypeAspect
 
     [Template]
     private void BeginInitialization() => SecurityContext.BeginInitialization( meta.This );
+
+    [Template]
+    private void EndConstruction() => SecurityContext.EndConstruction( meta.This );
 
     [Template]
     private void EndInitialization() => SecurityContext.EndInitialization( meta.This );
