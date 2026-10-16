@@ -31,6 +31,7 @@ This chapter shows a few examples that demonstrate how to use Metalama. Each of 
 | [Interception proxies](Metalama.Samples.Proxy/README.md)  | Generates an interception proxy for an interface at compile time, without run-time code generation. |
 | [Metrics](metrics/Metalama.Samples.Metrics/README.md)     | Instruments methods with `System.Diagnostics.Metrics` counters and generates their dependency injection registration. |
 | [MAUI Exception Tracking](maui-exception-tracking/README.md) | Tracks exceptions in a .NET MAUI application and records the visual element that caused each one. |
+| [Getting legacy code under test](legacy-testing/README.md) | Replaces the hard-wired dependencies of legacy code with fakes or recorded interactions, with interceptors, to test the code without changing it. |
 
 If you have developed an original aspect with Metalama, consider [contributing](contributing.md) to this list.
 
