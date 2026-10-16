@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Metalama.Framework.RunTime;
 using Metalama.Samples.Metrics;
+using Metrics;
 #pragma warning disable CA2201
 [assembly: GenerateAddMetricsExtension]
 namespace Metalama.Samples.Metrics.Example;
