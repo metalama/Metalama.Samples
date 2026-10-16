@@ -44,6 +44,8 @@ items:
             topicUid: sample-retry-4
           - name: Step 5. Using Polly
             topicUid: sample-retry-5          
+          - name: Step 6. Retrying calls to code you don't own
+            topicUid: sample-retry-6
       - name: Enrich with parameter values
         topicUid: sample-enrich-exception
       - name: Report and swallow
