@@ -1,0 +1,3 @@
+// Error LAMA0037 on `RequiresPermission( "Read" )`: `The aspect 'RequiresPermission' cannot be applied to the parameter 'Document.TryGetFolder(out Folder?)/folder' because 'Document.TryGetFolder(out Folder?)/folder' must not be an 'out' parameter.`
+// Error LAMA0037 on `RequiresPermission( "Write" )`: `The aspect 'RequiresPermission' cannot be applied to the parameter 'Document.SetPriority(int)/priority' because the type of 'Document.SetPriority(int)/priority' must be convertible to 'ISecurable'.`
+// Error LAMA0037 on `RequiresPermission( "Write" )`: `The aspect 'RequiresPermission' cannot be applied to the parameter 'Document.Rename(string)/name' because the type of 'Document.Rename(string)/name' must be convertible to 'ISecurable'.`

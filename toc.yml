@@ -190,6 +190,11 @@ items:
               topicUid: sample-universal-interceptor-3
             - name: Step 4. Putting it all together
               topicUid: sample-universal-interceptor-4
+    - name: Authorization
+      topicUid: sample-authorization
+      items:
+        - name: The security model of the demo
+          topicUid: sample-authorization-security-model
 
     - name: Metrics
       topicUid: sample-metrics

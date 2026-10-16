@@ -1,0 +1,3 @@
+// Error AUTH004 on `BodyLength`: `'Report.BodyLength' grants permissions but has no permission check, so any caller would get them. Add [RequiresPermission], or remove [GrantsPermissions].`
+// Error AUTH004 on `other`: `'Report.IsSameLength(Report)/other' grants permissions but has no permission check, so any caller would get them. Add [RequiresPermission], or remove [GrantsPermissions].`
+// Error AUTH004 on `CountWords`: `'Report.CountWords()' grants permissions but has no permission check, so any caller would get them. Add [RequiresPermission], or remove [GrantsPermissions].`

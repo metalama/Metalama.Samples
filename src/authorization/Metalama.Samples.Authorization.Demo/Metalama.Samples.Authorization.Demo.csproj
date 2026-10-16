@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Metalama.Framework"/>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite"/>
+
+        <!-- EF Core 10 requires Microsoft.Extensions 10, so this project overrides the repository-wide version. -->
+        <PackageReference Include="Microsoft.Extensions.Hosting" VersionOverride="10.0.12"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="Metalama.Samples.Authorization.Demo.UnitTests"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Metalama.Samples.Authorization\Metalama.Samples.Authorization.csproj"/>
+    </ItemGroup>
+
+</Project>
