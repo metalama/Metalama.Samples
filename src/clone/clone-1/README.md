@@ -1,5 +1,6 @@
 ---
 uid: sample-clone-1
+browse-source: .
 summary: "This document outlines the initial steps to create a `Cloneable` aspect in C#, focusing on deep cloning by marking child properties with a custom `[Child]` attribute."
 keywords: "Cloneable aspect, deep cloning, ICloneable interface, MemberwiseClone"
 created-date: 2023-04-21

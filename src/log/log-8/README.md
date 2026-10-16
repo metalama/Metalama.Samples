@@ -1,5 +1,6 @@
 ---
 uid: sample-log-8
+browse-source: .
 level: 300
 summary: "Avoid infinite recursion in logging by using `LoggingRecursionGuard` to prevent stack overflow and performance issues."
 keywords: "infinite recursion, stack overflow, performance issues, logging"

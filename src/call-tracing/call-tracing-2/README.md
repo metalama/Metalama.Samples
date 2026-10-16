@@ -1,5 +1,6 @@
 ---
 uid: sample-call-tracing-2
+browse-source: .
 level: 300
 summary: "This example registers the call-tracing interceptors only when an MSBuild property is set, so that the tracing exists only in a trace build."
 keywords: "interceptors, call tracing, trace build, MSBuild property, TryGetProperty, CompilerVisibleProperty, project fabric, Metalama.Extensions.Interceptors"

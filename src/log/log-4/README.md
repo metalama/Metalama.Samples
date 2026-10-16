@@ -1,5 +1,6 @@
 ---
 uid: sample-log-4
+browse-source: .
 level: 300
 summary: "This document explains how to transition from using `Console.WriteLine` to `ILogger` for logging in .NET, emphasizing dependency injection for better flexibility, maintainability, and testability."
 keywords: "logging, aspect, ILogger, dependency injection"

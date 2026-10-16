@@ -1,5 +1,10 @@
 ---
 uid: sample-cache-2
+browse-source:
+  - path: .
+    children:
+      - title: Tests
+        path: ../../tests/Metalama.Samples.Cache2.Tests
 level: 250
 summary: "This document enhances caching by adding eligibility checks to prevent applying the aspect to `void` methods or methods with `out` or `ref` parameters."
 keywords: "caching, eligibility checks"

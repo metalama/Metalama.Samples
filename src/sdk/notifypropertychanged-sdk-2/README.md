@@ -1,5 +1,6 @@
 ---
 uid: sample-notifypropertychanged-sdk-2
+browse-source: .
 summary: "This document describes a second implementation strategy of `INotifyPropertyChanged` using the Roslyn API to analyze the syntax tree, supporting base class property dependencies."
 keywords: "INotifyPropertyChanged, Roslyn API, syntax tree, OnPropertyChanged"
 created-date: 2024-05-13

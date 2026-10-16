@@ -1,5 +1,10 @@
 ---
 uid: sample-call-telemetry-2
+browse-source:
+  - path: .
+    children:
+      - title: Tests
+        path: ../../tests/Metalama.Samples.CallTelemetry2.Tests
 level: 300
 summary: "This example creates an ActivitySource span around each call to a third-party SDK with a T# template interceptor, handles async methods, and passes the calling operation as an added parameter so that the call sites share the generated methods."
 keywords: "interceptors, tracing, OpenTelemetry, ActivitySource, Activity, span, async, T# template, RedirectToSynthesizedMethod, PlaceInType, Configure, AddParameter, SetArgument, project fabric"

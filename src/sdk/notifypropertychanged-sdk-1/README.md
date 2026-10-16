@@ -1,5 +1,6 @@
 ---
 uid: sample-notifypropertychanged-sdk
+browse-source: .
 summary: "This example demonstrates using `Metalama.Framework.Sdk` to analyze property dependencies within a type using the Roslyn code model."
 keywords: "INotifyPropertyChanged, Metalama.Framework.Sdk, analyze, syntax tree"
 created-date: 2024-05-13

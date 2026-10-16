@@ -1,5 +1,6 @@
 ---
 uid: sample-log-1
+browse-source: .
 level: 200
 summary: "This document introduces a basic example of aspect-oriented programming using Metalama to log method start and completion messages."
 keywords: "log method start, log method completion, custom attribute, meta.Proceed"

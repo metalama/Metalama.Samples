@@ -1,5 +1,10 @@
 ---
 uid: sample-metrics
+browse-source:
+  - path: .
+    children:
+      - title: Tests
+        path: ../Metalama.Samples.Metrics.Tests
 level: 400
 summary: "This example builds a family of aspects that instrument methods with System.Diagnostics.Metrics counters, generating a companion metrics class per instrumented type and its dependency injection registration."
 keywords: "System.Diagnostics.Metrics, C# metrics, instrumentation, Counter, IMeterFactory, OpenTelemetry, aspect"

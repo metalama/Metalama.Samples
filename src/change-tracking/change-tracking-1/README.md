@@ -1,5 +1,6 @@
 ---
 uid: sample-dirty-1
+browse-source: .
 summary: "This article discusses creating an aspect to implement the `IChangeTracking` interface, focusing on design decisions and implementation details."
 keywords: "change tracking, .NET, IChangeTracking interface, aspect"
 created-date: 2023-04-18

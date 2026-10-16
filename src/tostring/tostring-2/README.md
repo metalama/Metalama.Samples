@@ -1,5 +1,6 @@
 ---
 uid: sample-tostring-2
+browse-source: .
 summary: "This document describes enhancing a `ToString` aspect by adding a `[NotToString]` attribute and lightbulb menu suggestions for better customization and usability."
 keywords: "ToString method, lightbulb menu, customization,  code fixes, refactorings"
 created-date: 2024-09-05

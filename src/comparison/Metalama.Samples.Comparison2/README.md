@@ -1,5 +1,6 @@
 ---
 uid: sample-comparison-2
+browse-source: .
 ---
 
 # Equality comparison example, step 2: Support type inheritance

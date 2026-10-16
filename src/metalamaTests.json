@@ -3,5 +3,6 @@
   "WriteOutputHtml": true,
   "FormatOutput": true,
   "AddHtmlTitles": true,
+  "AddHtmlSymbols": true,
   "IgnoredDiagnostics": ["CS1701", "CS1702", "CS0169", "CS0649", "CS0067", "CS8618", "CS0219"]
 }

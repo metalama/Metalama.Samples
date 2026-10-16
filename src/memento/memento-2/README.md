@@ -1,5 +1,10 @@
 ---
 uid: sample-memento-2
+browse-source:
+  - path: .
+    children:
+      - title: Unit tests
+        path: ../../tests/Metalama.Samples.Memento2.UnitTests
 level: 300
 summary: "This article explains how to extend a Memento design pattern to support type inheritance using the Metalama framework, including validation and method overrides."
 keywords: "Memento design pattern, IMementoable, nested type"
