@@ -1,3 +1,4 @@
+using Metalama.Framework.RunTime;
 using Metalama.Framework.RunTime.Initialization;
 namespace Metalama.Samples.Authorization.Tests.GrantsPermissions;
 public class Folder : ISecurable, IInitializable
@@ -17,13 +18,24 @@ public class Folder : ISecurable, IInitializable
       _owner = value;
     }
   }
-  public Folder()
+  public Folder([AspectGenerated] InitializationContext context)
   {
     SecurityContext.BeginInitialization(this);
+    if (!context.IsHandled(InitializationSlot.OnConstructed))
+    {
+      this.OnConstructed(context);
+    }
+  }
+  public Folder() : this(context: default)
+  {
   }
   public virtual void Initialize(InitializationContext context = default)
   {
     SecurityContext.EndInitialization(this);
+  }
+  protected virtual void OnConstructed(InitializationContext context = default)
+  {
+    SecurityContext.EndConstruction(this);
   }
 }
 public class Report : ISecurable, IInitializable
@@ -114,13 +126,24 @@ public class Report : ISecurable, IInitializable
       return this.Body?.Split(' ').Length ?? 0;
     }
   }
-  public Report()
+  public Report([AspectGenerated] InitializationContext context)
   {
     SecurityContext.BeginInitialization(this);
+    if (!context.IsHandled(InitializationSlot.OnConstructed))
+    {
+      this.OnConstructed(context);
+    }
+  }
+  public Report() : this(context: default)
+  {
   }
   public virtual void Initialize(InitializationContext context = default)
   {
     SecurityContext.EndInitialization(this);
+  }
+  protected virtual void OnConstructed(InitializationContext context = default)
+  {
+    SecurityContext.EndConstruction(this);
   }
 }
 public class WeightedReport : Report
@@ -136,14 +159,26 @@ public class WeightedReport : Report
       }
     }
   }
-  public WeightedReport()
+  public WeightedReport([AspectGenerated] InitializationContext context) : base(context.Descend(InitializationSlot.OnConstructed))
   {
     SecurityContext.BeginInitialization(this);
+    if (!context.IsHandled(InitializationSlot.OnConstructed))
+    {
+      this.OnConstructed(context);
+    }
+  }
+  public WeightedReport() : this(context: default)
+  {
   }
   public override void Initialize(InitializationContext context = default)
   {
     base.Initialize(context);
     SecurityContext.EndInitialization(this);
+  }
+  protected override void OnConstructed(InitializationContext context = default)
+  {
+    base.OnConstructed(context);
+    SecurityContext.EndConstruction(this);
   }
 }
 // The check can also come from the default securing of SecurableType.
@@ -175,12 +210,23 @@ public class Summary : ISecurable, IInitializable
       }
     }
   }
-  public Summary()
+  public Summary([AspectGenerated] InitializationContext context)
   {
     SecurityContext.BeginInitialization(this);
+    if (!context.IsHandled(InitializationSlot.OnConstructed))
+    {
+      this.OnConstructed(context);
+    }
+  }
+  public Summary() : this(context: default)
+  {
   }
   public virtual void Initialize(InitializationContext context = default)
   {
     SecurityContext.EndInitialization(this);
+  }
+  protected virtual void OnConstructed(InitializationContext context = default)
+  {
+    SecurityContext.EndConstruction(this);
   }
 }

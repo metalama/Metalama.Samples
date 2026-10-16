@@ -1,3 +1,4 @@
+using Metalama.Framework.RunTime;
 using Metalama.Framework.RunTime.Initialization;
 namespace Metalama.Samples.Authorization.Tests.GrantsPermissions_Interface;
 public class Invoice : ISecurable, IInitializable
@@ -16,13 +17,24 @@ public class Invoice : ISecurable, IInitializable
       _total = value;
     }
   }
-  public Invoice()
+  public Invoice([AspectGenerated] InitializationContext context)
   {
     SecurityContext.BeginInitialization(this);
+    if (!context.IsHandled(InitializationSlot.OnConstructed))
+    {
+      this.OnConstructed(context);
+    }
+  }
+  public Invoice() : this(context: default)
+  {
   }
   public virtual void Initialize(InitializationContext context = default)
   {
     SecurityContext.EndInitialization(this);
+  }
+  protected virtual void OnConstructed(InitializationContext context = default)
+  {
+    SecurityContext.EndConstruction(this);
   }
 }
 // The aspects on the parameter of an interface method are inherited by the parameter of every implementation.

@@ -15,9 +15,9 @@ public class PersistenceTests : IAsyncLifetime
 {
     private DemoOrganization _org = null!;
 
-    public async Task InitializeAsync() => this._org = await DemoOrganization.CreateAsync();
+    public async ValueTask InitializeAsync() => this._org = await DemoOrganization.CreateAsync();
 
-    public async Task DisposeAsync() => await this._org.DisposeAsync();
+    public async ValueTask DisposeAsync() => await this._org.DisposeAsync();
 
     [Fact]
     public async Task Loading_DoesNotCallSecuredAccessors()

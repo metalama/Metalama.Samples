@@ -161,6 +161,9 @@ items:
           topicUid: sample-proxy
     - name: Authorization
       topicUid: sample-authorization
+      items:
+        - name: The security model of the demo
+          topicUid: sample-authorization-security-model
 
     - name: Metrics
       topicUid: sample-metrics

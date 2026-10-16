@@ -46,13 +46,22 @@ public sealed class Quote : Entity
   // Not secured: the option set on the base member in the library is inherited by the override.
   protected override IRoleBasedSecurable? SecurityParent => null;
   public override string ToString() => "quote";
-  public Quote()
+  public Quote(InitializationContext context) : base(context.Descend(InitializationSlot.OnConstructed))
   {
     SecurityContext.BeginInitialization(this);
+    this.OnConstructed(context);
+  }
+  public Quote() : this(context: default)
+  {
   }
   public override void Initialize(InitializationContext context = default)
   {
     base.Initialize(context);
     SecurityContext.EndInitialization(this);
+  }
+  protected override void OnConstructed(InitializationContext context = default)
+  {
+    base.OnConstructed(context);
+    SecurityContext.EndConstruction(this);
   }
 }

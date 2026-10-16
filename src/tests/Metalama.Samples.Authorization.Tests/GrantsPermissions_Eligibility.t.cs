@@ -1,5 +1,5 @@
 // Error LAMA0037 on `GrantsPermissions( "Read" )`: `The aspect 'GrantsPermissions' cannot be applied to the property 'Report.Title' because 'Report.Title' must not be an automatic property.`
 // Error LAMA0037 on `GrantsPermissions( "Read" )`: `The aspect 'GrantsPermissions' cannot be applied to the method 'Report.Words()' because 'Report.Words()' must not be an iterator.`
-// Error LAMA0037 on `GrantsPermissions( "Read" )`: `The aspect 'GrantsPermissions' cannot be applied to the parameter 'Folder.Folder(Report)/report' because the parent member 'Folder.Folder(Report)' must be a method.`
+// Error LAMA0037 on `GrantsPermissions( "Read" )`: `The aspect 'GrantsPermissions' cannot be applied to the parameter 'Folder.Folder(Report, InitializationContext)/report' because the parent member 'Folder.Folder(Report, InitializationContext)' must be a method.`
 // Error LAMA0037 on `GrantsPermissions( "Read" )`: `The aspect 'GrantsPermissions' cannot be applied to the parameter 'Folder.Rename(string)/name' because the type of 'Folder.Rename(string)/name' must be convertible to 'ISecurable'.`
 // Error LAMA0037 on `GrantsPermissions( "Read" )`: `The aspect 'GrantsPermissions' cannot be applied to the method 'Calculator.Add(int, int)' because the declaring type 'Calculator' must be convertible to 'ISecurable'.`

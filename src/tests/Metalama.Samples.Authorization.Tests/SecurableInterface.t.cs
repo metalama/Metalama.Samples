@@ -1,3 +1,4 @@
+using Metalama.Framework.RunTime;
 using Metalama.Framework.RunTime.Initialization;
 namespace Metalama.Samples.Authorization.Tests.SecurableInterface;
 // Implementing ISecurable is enough: the class inherits the SecurableType aspect from the interface,
@@ -22,13 +23,24 @@ public class Document : ISecurable, IInitializable
   {
     AccessGuard.Demand(this, "Write", "Document.Publish", AccessKind.Execute);
   }
-  public Document()
+  public Document([AspectGenerated] InitializationContext context)
   {
     SecurityContext.BeginInitialization(this);
+    if (!context.IsHandled(InitializationSlot.OnConstructed))
+    {
+      this.OnConstructed(context);
+    }
+  }
+  public Document() : this(context: default)
+  {
   }
   public virtual void Initialize(InitializationContext context = default)
   {
     SecurityContext.EndInitialization(this);
+  }
+  protected virtual void OnConstructed(InitializationContext context = default)
+  {
+    SecurityContext.EndConstruction(this);
   }
 }
 // The aspect is also inherited through a derived interface, and by derived classes.
@@ -49,13 +61,24 @@ public class Archive : IArchive, IInitializable
       _capacity = value;
     }
   }
-  public Archive()
+  public Archive([AspectGenerated] InitializationContext context)
   {
     SecurityContext.BeginInitialization(this);
+    if (!context.IsHandled(InitializationSlot.OnConstructed))
+    {
+      this.OnConstructed(context);
+    }
+  }
+  public Archive() : this(context: default)
+  {
   }
   public virtual void Initialize(InitializationContext context = default)
   {
     SecurityContext.EndInitialization(this);
+  }
+  protected virtual void OnConstructed(InitializationContext context = default)
+  {
+    SecurityContext.EndConstruction(this);
   }
 }
 public class ColdArchive : Archive
@@ -74,13 +97,25 @@ public class ColdArchive : Archive
       _location = value;
     }
   }
-  public ColdArchive()
+  public ColdArchive([AspectGenerated] InitializationContext context) : base(context.Descend(InitializationSlot.OnConstructed))
   {
     SecurityContext.BeginInitialization(this);
+    if (!context.IsHandled(InitializationSlot.OnConstructed))
+    {
+      this.OnConstructed(context);
+    }
+  }
+  public ColdArchive() : this(context: default)
+  {
   }
   public override void Initialize(InitializationContext context = default)
   {
     base.Initialize(context);
     SecurityContext.EndInitialization(this);
+  }
+  protected override void OnConstructed(InitializationContext context = default)
+  {
+    base.OnConstructed(context);
+    SecurityContext.EndConstruction(this);
   }
 }

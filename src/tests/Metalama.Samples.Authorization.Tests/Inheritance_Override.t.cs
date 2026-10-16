@@ -1,3 +1,4 @@
+using Metalama.Framework.RunTime;
 using Metalama.Framework.RunTime.Initialization;
 namespace Metalama.Samples.Authorization.Tests.Inheritance_Override;
 public class Document : ISecurable, IInitializable
@@ -22,13 +23,24 @@ public class Document : ISecurable, IInitializable
       _title = value;
     }
   }
-  public Document()
+  public Document([AspectGenerated] InitializationContext context)
   {
     SecurityContext.BeginInitialization(this);
+    if (!context.IsHandled(InitializationSlot.OnConstructed))
+    {
+      this.OnConstructed(context);
+    }
+  }
+  public Document() : this(context: default)
+  {
   }
   public virtual void Initialize(InitializationContext context = default)
   {
     SecurityContext.EndInitialization(this);
+  }
+  protected virtual void OnConstructed(InitializationContext context = default)
+  {
+    SecurityContext.EndConstruction(this);
   }
 }
 // The aspect is inherited: the overrides are checked although they have no attribute
@@ -53,13 +65,25 @@ public class Contract : Document
       _title = value;
     }
   }
-  public Contract()
+  public Contract([AspectGenerated] InitializationContext context) : base(context.Descend(InitializationSlot.OnConstructed))
   {
     SecurityContext.BeginInitialization(this);
+    if (!context.IsHandled(InitializationSlot.OnConstructed))
+    {
+      this.OnConstructed(context);
+    }
+  }
+  public Contract() : this(context: default)
+  {
   }
   public override void Initialize(InitializationContext context = default)
   {
     base.Initialize(context);
     SecurityContext.EndInitialization(this);
+  }
+  protected override void OnConstructed(InitializationContext context = default)
+  {
+    base.OnConstructed(context);
+    SecurityContext.EndConstruction(this);
   }
 }

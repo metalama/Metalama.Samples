@@ -1,3 +1,4 @@
+using Metalama.Framework.RunTime;
 using Metalama.Framework.RunTime.Initialization;
 namespace Metalama.Samples.Authorization.Tests.Options_Disabled;
 public abstract class Entity : ISecurable, IInitializable
@@ -16,13 +17,24 @@ public abstract class Entity : ISecurable, IInitializable
       _name = value;
     }
   }
-  protected Entity()
+  protected Entity([AspectGenerated] InitializationContext context)
   {
     SecurityContext.BeginInitialization(this);
+    if (!context.IsHandled(InitializationSlot.OnConstructed))
+    {
+      this.OnConstructed(context);
+    }
+  }
+  protected Entity() : this(context: default)
+  {
   }
   public virtual void Initialize(InitializationContext context = default)
   {
     SecurityContext.EndInitialization(this);
+  }
+  protected virtual void OnConstructed(InitializationContext context = default)
+  {
+    SecurityContext.EndConstruction(this);
   }
 }
 // Default securing can be disabled for a type...
@@ -30,14 +42,26 @@ public abstract class Entity : ISecurable, IInitializable
 public class LookupValue : Entity
 {
   public string? Code { get; set; }
-  public LookupValue()
+  public LookupValue([AspectGenerated] InitializationContext context) : base(context.Descend(InitializationSlot.OnConstructed))
   {
     SecurityContext.BeginInitialization(this);
+    if (!context.IsHandled(InitializationSlot.OnConstructed))
+    {
+      this.OnConstructed(context);
+    }
+  }
+  public LookupValue() : this(context: default)
+  {
   }
   public override void Initialize(InitializationContext context = default)
   {
     base.Initialize(context);
     SecurityContext.EndInitialization(this);
+  }
+  protected override void OnConstructed(InitializationContext context = default)
+  {
+    base.OnConstructed(context);
+    SecurityContext.EndConstruction(this);
   }
 }
 public class Invoice : Entity
@@ -59,13 +83,25 @@ public class Invoice : Entity
       _amount = value;
     }
   }
-  public Invoice()
+  public Invoice([AspectGenerated] InitializationContext context) : base(context.Descend(InitializationSlot.OnConstructed))
   {
     SecurityContext.BeginInitialization(this);
+    if (!context.IsHandled(InitializationSlot.OnConstructed))
+    {
+      this.OnConstructed(context);
+    }
+  }
+  public Invoice() : this(context: default)
+  {
   }
   public override void Initialize(InitializationContext context = default)
   {
     base.Initialize(context);
     SecurityContext.EndInitialization(this);
+  }
+  protected override void OnConstructed(InitializationContext context = default)
+  {
+    base.OnConstructed(context);
+    SecurityContext.EndConstruction(this);
   }
 }

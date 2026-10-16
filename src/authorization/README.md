@@ -167,23 +167,33 @@ internal Invoice( Department department, Customer customer, string number, User?
 }
 ```
 
-`[SecurableType]` adds two initializers to every securable class:
+An object goes through three states:
+
+1. While its constructors run, the code that creates the object, in its execution context, accesses the object without checks.
+2. After the last constructor, and until the end of the object initializer, the creator can only set the properties of the object, as an object initializer does. Its getters and its methods throw an `InvalidOperationException`.
+3. After the object initializer, the object is initialized and checked like any other object.
+
+Any access from another execution context throws an `InvalidOperationException` until the object is initialized: an object that is not completely set up cannot be used by anybody else.
+
+`[SecurableType]` adds three initializers to every securable class, one for each transition:
 
 * A `BeforeInstanceConstructor` initializer calls `SecurityContext.BeginInitialization( this )` before the code of the constructors.
+* An `AfterLastInstanceConstructor` initializer calls `SecurityContext.EndConstruction( this )` at the end of the last constructor of the chain, from the `OnConstructed` method that Metalama introduces.
 * An `AfterObjectInitializer` initializer calls `SecurityContext.EndInitialization( this )` from the `Initialize` method that Metalama introduces. Metalama rewrites each `new` expression of a securable class to call `Initialize` after the object initializer, so `new Folder { Owner = creator }` is not checked either.
 
-`AccessGuard.Demand` does not check an access to an object that is being initialized in the current execution context. The access is not cached, and it is audited like a granted access. The accesses to other objects are checked as usual: a constructor that reads another object needs the permissions of the subject on that object.
+`AccessGuard.Demand` applies these rules before it calls the policy. An access that the creator makes during the initialization is not cached, and it is audited like a granted access. The accesses to other objects are checked as usual: a constructor that reads another object needs the permissions of the subject on that object.
 
-The initialization is recorded in the current execution context, not on the object:
+The rights of the creator are recorded in the current execution context, not on the object:
 
-* Another request, or a thread that does not share the execution context, checks the object as usual.
 * A grant shares the objects being initialized with its parent, because it keeps the subject. `SecurityContext.Use` does not, because it changes the subject.
 * Nothing is recorded in a system scope, where nothing is checked anyway. Entity Framework creates the objects that it loads in a system scope, so loading an object does not open it.
 * Nothing is recorded without an execution context, so a constructor that sets secured members without a context fails closed.
 
-Metalama calls `Initialize` only at the call sites that it compiles. An object created by reflection, by a serializer, or by an assembly that is not compiled with Metalama is never marked as initialized. Its creator keeps unlimited rights on it until the end of the current execution context. Because the initialization is recorded in the execution context, the rights cannot reach another request.
+Metalama calls `Initialize` only at the call sites that it compiles. An object created by reflection, by a serializer, or by an assembly that is not compiled with Metalama stays in the second state: its creator can set its properties, but nobody can read it or call its methods. The code that creates such an object calls `ISecurable.CompleteInitialization`, which calls `Initialize`. `ISecurable.IsInitialized` tells whether the initialization has ended. Both are default implementations of the interface, so a class does not implement them. The interface does not derive from `IInitializable`: every class that implements it directly would then have to implement `Initialize` in its source code, because Metalama introduces this method after the C# compiler has checked the source.
 
-The introduced `Initialize` method is public. `[SecurableType]` excludes it from default securing, because a check would fail for every creator who cannot write the object.
+The `AfterLastInstanceConstructor` initializer adds an `InitializationContext` parameter to the constructors, which coordinates the initializers across the levels of a class hierarchy. A parameterless constructor is kept, and forwards to the constructor that has the parameter, so `Activator.CreateInstance<T>()` and the `new()` constraint still work. A constructor with parameters gets an optional `InitializationContext` parameter, so reflection code that passes arguments must pass this parameter too.
+
+The introduced `Initialize` method is public, and `OnConstructed` is protected. `[SecurableType]` excludes both from default securing, because a check would fail for every creator who cannot write the object.
 
 > [!NOTE]
 > Metalama rewrites a `new` expression of a securable class even inside an expression tree, where the rewritten call does not compile (error `CS0854`). The value converter of `Invoice.Notes` in `InvoicingDbContext` therefore creates its lists in static methods, and not in its lambda expressions.
@@ -510,7 +520,7 @@ The aspect tests in `Metalama.Samples.Authorization.Tests` verify the generated 
 `Metalama.Samples.Authorization.UnitTests` tests the framework on small test types, independently of the demo:
 
 * `SecurityContextTests`: fail-closed behavior, system scopes, `Use` that ends a system scope, and context isolation across `await` and concurrent tasks.
-* `InitializationTests`: unlimited rights on an object while its constructors and its object initializer run, the checks on other objects, the checks after the initialization, and a constructor without a context that fails closed.
+* `InitializationTests`: unlimited rights on an object while its constructors and its object initializer run, the checks on other objects, the checks after the initialization, a constructor without a context that fails closed, an object created by reflection that is unusable until `CompleteInitialization`, and the parameterless constructor of a class that implements `ISecurable` directly.
 * `NestedAccessTests`: the permission of a member does not grant the permissions of the members that it accesses, including private state.
 * `PermissionCacheTests`: the cache of an execution context, shared by the `async` methods and the tasks of the context, the denials cached and still audited, the grant that breaks the execution context, a change of rights that applies to the next execution context, and a change of owner that clears the cache at once.
 * `CachingAuthorizationPolicyTests`: the cache shared by all execution contexts, the objects without a key or without a recorded load, the objects loaded before an invalidation, the invalidation of an object and of its descendants, and an invalidation while the policy runs.
@@ -548,7 +558,7 @@ The other test classes cover what a single operation cannot show:
 
 * The cache of an execution context is cleared only after a change of the owner or of the role assignments. A long-running operation keeps the decisions of its start.
 * The cache shared by all execution contexts is invalidated after a save, in the process that saves. The other requests do not see a change that is not saved. Another instance of the application, or a change made directly in the database, is seen only when the decisions expire, after five minutes.
-* An object created by reflection, by a serializer, or by an assembly that is not compiled with Metalama is not marked as initialized, so its creator keeps unlimited rights on it until the end of the execution context.
+* An object created by reflection, by a serializer, or by an assembly that is not compiled with Metalama is unusable until its creator calls `ISecurable.CompleteInitialization`. In the meantime, the creator can still set its properties in the same execution context.
 * Every access to a field or a property runs a check. A check that finds its decision in the cache of the execution context costs a dictionary lookup and the allocation of a `Permission`.
 * Rules apply to types, not to object states. "Only draft invoices can be edited" is a business rule in the `Invoice` methods.
 * A department manager can assign any role in their department to another person, including a role with more rights than their own. Nobody can assign a role to themself, but a real system also restricts which roles each role may assign.

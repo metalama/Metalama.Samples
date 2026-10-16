@@ -2,6 +2,7 @@
 // Warning AUTH001 on `this`: `'Document.this[int]' is exposed by the secured type 'Document' but has no permission check. Add [RequiresPermission], or exclude the member explicitly with [AuthorizationOptions( IsDefaultSecuringEnabled = false )].`
 // Warning AUTH001 on `Changed`: `'Document.Changed' is exposed by the secured type 'Document' but has no permission check. Add [RequiresPermission], or exclude the member explicitly with [AuthorizationOptions( IsDefaultSecuringEnabled = false )].`
 using System.Collections.Immutable;
+using Metalama.Framework.RunTime;
 using Metalama.Framework.RunTime.Initialization;
 namespace Metalama.Samples.Authorization.Tests.Validation_UnsecuredMembers;
 public class Document : ISecurable, IInitializable
@@ -37,7 +38,7 @@ public class Document : ISecurable, IInitializable
   // A static member cannot be secured: warning AUTH002.
   public static Document Create()
   {
-    return InitializableExtensions.WithInitialize<Document>(new());
+    return InitializableExtensions.WithInitialize<Document>(new(context: InitializationContext.WillInitialize));
   }
   // The aspect does not support indexers and events: warning AUTH001.
   public string this[int index] => this._pages[index];
@@ -47,12 +48,23 @@ public class Document : ISecurable, IInitializable
   public static int MaxPages => 100;
   [AuthorizationOptions(IsDefaultSecuringEnabled = false)]
   public event EventHandler? Viewed;
-  public Document()
+  public Document([AspectGenerated] InitializationContext context)
   {
     SecurityContext.BeginInitialization(this);
+    if (!context.IsHandled(InitializationSlot.OnConstructed))
+    {
+      this.OnConstructed(context);
+    }
+  }
+  public Document() : this(context: default)
+  {
   }
   public virtual void Initialize(InitializationContext context = default)
   {
     SecurityContext.EndInitialization(this);
+  }
+  protected virtual void OnConstructed(InitializationContext context = default)
+  {
+    SecurityContext.EndConstruction(this);
   }
 }
