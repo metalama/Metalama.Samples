@@ -1,6 +1,10 @@
 ---
 uid: sample-clone-2
-browse-source: .
+browse-source:
+  - path: .
+    children:
+      - title: Tests
+        path: ../../tests/Metalama.Samples.Clone2.Tests
 summary: "This document discusses improving a Deep Clone aspect by adding error reporting for unsupported situations like read-only fields, non-cloneable types, and non-automatic properties."
 keywords: "Deep Clone, Clone method"
 created-date: 2023-04-21

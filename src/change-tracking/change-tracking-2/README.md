@@ -1,6 +1,10 @@
 ---
 uid: sample-dirty-2
-browse-source: .
+browse-source:
+  - path: .
+    children:
+      - title: Tests
+        path: ../../tests/Metalama.Samples.ChangeTracking2.Tests
 summary: "This document explains enhancing an aspect to report errors if a base class lacks a required `OnChange` method or if it's not protected."
 keywords: ".NET, aspect, IChangeTracking interface"
 created-date: 2023-04-18

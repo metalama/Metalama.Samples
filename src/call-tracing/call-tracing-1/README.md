@@ -1,6 +1,10 @@
 ---
 uid: sample-call-tracing-1
-browse-source: .
+browse-source:
+  - path: .
+    children:
+      - title: Tests
+        path: ../../tests/Metalama.Samples.CallTracing1.Tests
 level: 300
 summary: "This example traces each call to the API of a class library with a project fabric and a T# template interceptor: the caller, the arguments, the result, the exception and the duration."
 keywords: "interceptors, call tracing, temporary instrumentation, project fabric, T# template, InterceptMethods, RedirectToSynthesizedMethod, Metalama.Extensions.Interceptors"

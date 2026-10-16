@@ -1,6 +1,12 @@
 ---
 uid: sample-proxy
-browse-source: .
+browse-source:
+  - path: .
+    children:
+      - title: Tests
+        path: ../tests/Metalama.Samples.Proxy.Tests
+      - title: Unit tests
+        path: ../tests/Metalama.Samples.Proxy.UnitTests
 level: 400
 summary: "This example builds an aspect that generates an interception proxy for an interface at compile time, routing every call through an IInterceptor without dynamic code generation."
 keywords: "proxy pattern C#, interception proxy, DispatchProxy alternative, compile-time proxy generation, interceptor, aspect"

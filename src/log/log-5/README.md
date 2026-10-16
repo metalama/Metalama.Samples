@@ -1,6 +1,10 @@
 ---
 uid: sample-log-5
-browse-source: .
+browse-source:
+  - path: .
+    children:
+      - title: Tests
+        path: ../../tests/Metalama.Samples.Log5.Tests
 level: 300
 summary: "The document explains implementing an aspect that requires an existing `ILogger` field, reporting errors if missing or incorrect, and handling eligibility for static methods."
 keywords: "logging aspect, eligibility"

@@ -1,6 +1,10 @@
 ---
 uid: sample-log-3
-browse-source: .
+browse-source:
+  - path: .
+    children:
+      - title: Tests
+        path: ../../tests/Metalama.Samples.Log3.Tests
 level: 250
 summary: "This document explains how to enhance logging by including runtime parameter values and return values, while cautioning against logging sensitive information."
 keywords: "logging, runtime parameter values, return values"

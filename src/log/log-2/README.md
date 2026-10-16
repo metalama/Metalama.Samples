@@ -1,6 +1,10 @@
 ---
 uid: sample-log-2
-browse-source: .
+browse-source:
+  - path: .
+    children:
+      - title: Tests
+        path: ../../tests/Metalama.Samples.Log2.Tests
 level: 200
 summary: "This document describes enhancing a logging aspect to include method names and signatures, improving its utility across multiple methods."
 keywords: "logging aspect"

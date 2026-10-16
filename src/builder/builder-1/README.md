@@ -1,6 +1,10 @@
 ---
 uid: sample-builder-1
-browse-source: .
+browse-source:
+  - path: .
+    children:
+      - title: Tests
+        path: ../../tests/Metalama.Samples.Builder1.Tests
 summary: ""
 keywords: "builder pattern C#, c# builder pattern, builder design pattern C#"
 created-date: 2024-09-30

@@ -1,6 +1,11 @@
 ---
 uid: sample-singleton-1
-browse-source: [., ../singleton-0]
+browse-source:
+  - path: .
+    children:
+      - title: Tests
+        path: ../../tests/Metalama.Samples.Singleton1.Tests
+  - path: ../singleton-0
 summary: "This document shows how to implement the classic Singleton pattern using an aspect. This pattern ensures a single instance of a class with a private constructor and a static instance property."
 keywords: "Singleton pattern"
 created-date: 2024-06-23
