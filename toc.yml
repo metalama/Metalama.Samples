@@ -179,6 +179,17 @@ items:
               topicUid: sample-legacy-replacement-2
             - name: Step 3. Switching one module at a time
               topicUid: sample-legacy-replacement-3
+        - name: Universal interceptor
+          topicUid: sample-universal-interceptor
+          items:
+            - name: Step 1. Routing synchronous calls to one object
+              topicUid: sample-universal-interceptor-1
+            - name: Step 2. Handling async methods
+              topicUid: sample-universal-interceptor-2
+            - name: Step 3. Handling ref and out parameters
+              topicUid: sample-universal-interceptor-3
+            - name: Step 4. Putting it all together
+              topicUid: sample-universal-interceptor-4
 
     - name: Metrics
       topicUid: sample-metrics
