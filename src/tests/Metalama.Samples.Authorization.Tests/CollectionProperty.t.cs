@@ -2,8 +2,9 @@
 // Warning AUTH003 on `Sections`: `'Document.Sections' returns the collection type 'string[]', which the getter cannot secure: a caller who can read it may change its content without the write permission. Declare it as IList<T>, ICollection<T>, IReadOnlyList<T>, IReadOnlyCollection<T> or IEnumerable<T>, initialized with a SecurableList<T>, or as an immutable type.`
 // Warning AUTH003 on `Metadata`: `'Document.Metadata' returns the collection type 'Dictionary<string, string>', which the getter cannot secure: a caller who can read it may change its content without the write permission. Declare it as IList<T>, ICollection<T>, IReadOnlyList<T>, IReadOnlyCollection<T> or IEnumerable<T>, initialized with a SecurableList<T>, or as an immutable type.`
 using System.Collections.Immutable;
+using Metalama.Framework.RunTime.Initialization;
 namespace Metalama.Samples.Authorization.Tests.CollectionProperty;
-public class Document : ISecurable
+public class Document : ISecurable, IInitializable
 {
   private readonly SecurableList<string> _authors1 = [];
   private SecurableList<string> _authors
@@ -18,7 +19,7 @@ public class Document : ISecurable
       _authors1 = value;
     }
   }
-  private readonly IList<string> _tags = new SecurableList<string>();
+  private readonly IList<string> _tags = new SecurableList<string>().WithInitialize();
   // The getter sets the owner of the securable list on the first access, so that changing the list requires Write.
   public IList<string> Tags
   {
@@ -32,7 +33,7 @@ public class Document : ISecurable
       _tags = value;
     }
   }
-  private readonly ICollection<int> _pages = new SecurableList<int>();
+  private readonly ICollection<int> _pages = new SecurableList<int>().WithInitialize();
   public ICollection<int> Pages
   {
     get
@@ -132,5 +133,13 @@ public class Document : ISecurable
     {
       _metadata = value;
     }
+  }
+  public Document()
+  {
+    SecurityContext.BeginInitialization(this);
+  }
+  public virtual void Initialize(InitializationContext context = default)
+  {
+    SecurityContext.EndInitialization(this);
   }
 }

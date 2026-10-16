@@ -25,6 +25,15 @@ public static class AccessGuard
         var context = GetContext( member );
         Permission requiredPermission = permission;
 
+        // The caller of a constructor has unlimited rights on the object until its initialization ends
+        // (see SecurityContext.BeginInitialization). The access is not cached, but it is audited like a grant.
+        if ( SecurityContext.IsInitializing( securable ) )
+        {
+            AuditGrant( context, securable, requiredPermission, member, accessKind );
+
+            return;
+        }
+
         // The decision is cached in the current execution context (see SecurityContext). Each access is still
         // audited, because the auditor records accesses, not decisions.
         if ( !SecurityContext.TryGetCachedDecision( securable, requiredPermission, out var isGranted ) )
@@ -41,17 +50,34 @@ public static class AccessGuard
             SecurityContext.CacheDecision( securable, requiredPermission, isGranted );
         }
 
-        // The auditor runs with the permissions of the subject, outside of the system scope.
-        if ( isGranted )
-        {
-            if ( context.Auditor?.AuditsGrantsOf( requiredPermission ) == true )
-            {
-                context.Auditor.OnAccessGranted( CreateRecord( context, securable, requiredPermission, member, accessKind ) );
-            }
-        }
-        else
+        if ( !isGranted )
         {
             Fail( context, CreateRecord( context, securable, requiredPermission, member, accessKind ), null );
+        }
+
+        // An access that changes the rights makes the cached decisions wrong: the cache of the execution context is
+        // cleared, and the decisions on the object are removed from the shared cache. The access is checked before the
+        // change, so the next check sees the change.
+        if ( IsRightsChanging( requiredPermission ) )
+        {
+            SecurityContext.ClearCachedDecisions();
+            (context.Policy as CachingAuthorizationPolicy)?.Invalidate( securable );
+        }
+
+        AuditGrant( context, securable, requiredPermission, member, accessKind );
+    }
+
+    // The permissions whose operations change the owner or the role assignments of an object, which the role-based
+    // policy reads.
+    private static bool IsRightsChanging( Permission permission )
+        => permission.Name is PermissionNames.ChangeOwnership or PermissionNames.ManageRoles;
+
+    // The auditor runs with the permissions of the subject, outside of the system scope.
+    private static void AuditGrant( ISecurityContext context, ISecurable securable, Permission permission, string member, AccessKind accessKind )
+    {
+        if ( context.Auditor?.AuditsGrantsOf( permission ) == true )
+        {
+            context.Auditor.OnAccessGranted( CreateRecord( context, securable, permission, member, accessKind ) );
         }
     }
 

@@ -40,15 +40,15 @@ public static class DemoRoles
     public static Role Creator { get; } = Role.Computed( nameof(Creator) );
 
     /// <summary>
-    /// Gets the role that has a given name, as the database stores it. A name that is not a computed role is an
-    /// assigned role: assigned roles are data, and an administrator can define new ones.
+    /// Gets the roles that the application defines, computed or assigned.
     /// </summary>
-    public static Role FromName( string name )
-        => name switch
-        {
-            nameof(Role.Everyone) => Role.Everyone,
-            nameof(Role.Owner) => Role.Owner,
-            nameof(Creator) => Creator,
-            _ => new Role( name )
-        };
+    public static IReadOnlyList<Role> All { get; } =
+        [Role.Everyone, Role.Owner, Creator, DepartmentManager, DepartmentAssistant, Accountant, Auditor, Administrator];
+
+    /// <summary>
+    /// Gets the role that has a given name, as the database stores it, or <c>null</c> when the application does not
+    /// define this role. A new role requires a change of this class, so that a mistyped name is an error instead of a
+    /// role that nobody has.
+    /// </summary>
+    public static Role? FromName( string name ) => All.FirstOrDefault( role => role.Name == name );
 }

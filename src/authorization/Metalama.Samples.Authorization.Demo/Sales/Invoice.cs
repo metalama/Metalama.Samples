@@ -23,10 +23,9 @@ public sealed class Invoice : Entity, ISecurableCollectionOwner
     /// creator may create it.
     /// </summary>
     /// <remarks>
-    /// The constructor sets secured members of the new invoice, so it grants the permissions that they require on it.
-    /// The grant does not apply to any other object.
+    /// The constructor sets secured members of the new invoice, including its owner. The caller of a constructor has
+    /// unlimited rights on the new object until its initialization ends (see <see cref="SecurableTypeAttribute"/>).
     /// </remarks>
-    [GrantsPermissions( PermissionNames.Write, PermissionNames.ChangeOwnership )]
     internal Invoice( Department department, Customer customer, string number, User? creator )
     {
         this.Department = department;

@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Primitives;
 
@@ -17,6 +18,11 @@ namespace Metalama.Samples.Authorization;
 /// <para>The keys identify the objects and the subjects, not their instances, because an application such as a web
 /// application loads new instances in each request. An object or a subject without a key, for instance an object
 /// that has not been saved yet, is not cached.</para>
+/// <para>A decision is cached only when the data that it was made from is current. Each invalidation increments
+/// <see cref="Generation"/>, and the application calls <see cref="RecordLoad"/> when it loads an object. A decision on
+/// an object, or on an object that depends on another one, that was loaded before the last invalidation may have been
+/// made from data that has changed since then, so it is not cached. An object whose load was not recorded is not
+/// cached either.</para>
 /// <para>An execution context that started before an invalidation keeps its own decisions until it ends.</para>
 /// </remarks>
 public sealed class CachingAuthorizationPolicy : IAuthorizationPolicy, IDisposable
@@ -26,8 +32,10 @@ public sealed class CachingAuthorizationPolicy : IAuthorizationPolicy, IDisposab
     private readonly Func<object, object?> _getKey;
     private readonly Func<ISecurable, IEnumerable<ISecurable>> _getDependencies;
     private readonly TimeSpan _expiration;
+    private readonly ConditionalWeakTable<object, StrongBox<long>> _loadGenerations = new();
     private readonly Lock _tokenLock = new();
     private CancellationTokenSource _allToken = new();
+    private long _generation;
 
     /// <summary>
     /// Initializes a new <see cref="CachingAuthorizationPolicy"/>.
@@ -53,6 +61,17 @@ public sealed class CachingAuthorizationPolicy : IAuthorizationPolicy, IDisposab
         this._expiration = expiration ?? TimeSpan.FromMinutes( 5 );
     }
 
+    /// <summary>
+    /// Gets the number of invalidations since the creation of the policy.
+    /// </summary>
+    public long Generation => Interlocked.Read( ref this._generation );
+
+    /// <summary>
+    /// Records that an object has just been loaded, with the current data of the store. Call it before the data of the
+    /// object is read, for instance when the object is created by the data access layer.
+    /// </summary>
+    public void RecordLoad( object value ) => this._loadGenerations.AddOrUpdate( value, new StrongBox<long>( this.Generation ) );
+
     public bool IsGranted( ISubject subject, Permission permission, ISecurable securable )
     {
         var subjectKey = this._getKey( subject );
@@ -70,21 +89,26 @@ public sealed class CachingAuthorizationPolicy : IAuthorizationPolicy, IDisposab
             return isGranted;
         }
 
+        var dependencies = this._getDependencies( securable ).ToList();
+
         // The tokens are taken before the decision: when an invalidation happens while the inner policy runs, the
         // tokens are already canceled when the entry is added, and the entry expires immediately.
-        var tokens = this.GetTokens( securable, securableKey );
+        var tokens = this.GetTokens( securableKey, dependencies );
 
         isGranted = this._inner.IsGranted( subject, permission, securable );
 
-        // The size is required when the cache has a size limit.
-        var options = new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = this._expiration, Size = 1 };
-
-        foreach ( var token in tokens )
+        if ( tokens != null && this.IsCurrent( securable, dependencies ) )
         {
-            options.ExpirationTokens.Add( token );
-        }
+            // The size is required when the cache has a size limit.
+            var options = new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = this._expiration, Size = 1 };
 
-        this._cache.Set( key, isGranted, options );
+            foreach ( var token in tokens )
+            {
+                options.ExpirationTokens.Add( token );
+            }
+
+            this._cache.Set( key, isGranted, options );
+        }
 
         return isGranted;
     }
@@ -103,12 +127,15 @@ public sealed class CachingAuthorizationPolicy : IAuthorizationPolicy, IDisposab
 
         lock ( this._tokenLock )
         {
+            Interlocked.Increment( ref this._generation );
+
             if ( this._cache.TryGetValue( new TokenKey( key ), out CancellationTokenSource? source ) )
             {
                 this._cache.Remove( new TokenKey( key ) );
 
                 // The token is canceled here, and not in the eviction callback, which runs asynchronously.
                 source!.Cancel();
+                source.Dispose();
             }
         }
     }
@@ -118,51 +145,100 @@ public sealed class CachingAuthorizationPolicy : IAuthorizationPolicy, IDisposab
     /// </summary>
     public void InvalidateAll()
     {
-        Interlocked.Exchange( ref this._allToken, new CancellationTokenSource() ).Cancel();
+        lock ( this._tokenLock )
+        {
+            Interlocked.Increment( ref this._generation );
+
+            var previous = this._allToken;
+            this._allToken = new CancellationTokenSource();
+            previous.Cancel();
+            previous.Dispose();
+        }
     }
 
-    public void Dispose() => this._allToken.Dispose();
-
-    private List<IChangeToken> GetTokens( ISecurable securable, object securableKey )
+    public void Dispose()
     {
-        var tokens = new List<IChangeToken> { new CancellationChangeToken( Volatile.Read( ref this._allToken ).Token ), this.GetObjectToken( securableKey ) };
+        lock ( this._tokenLock )
+        {
+            this._allToken.Dispose();
+        }
+    }
 
-        foreach ( var dependency in this._getDependencies( securable ) )
+    // A decision is made from the data of the object and of its dependencies, so all of them must have been loaded
+    // after the last invalidation.
+    private bool IsCurrent( ISecurable securable, List<ISecurable> dependencies )
+    {
+        var generation = this.Generation;
+
+        return this.IsLoadedIn( securable, generation ) && dependencies.TrueForAll( dependency => this.IsLoadedIn( dependency, generation ) );
+    }
+
+    private bool IsLoadedIn( object value, long generation )
+        => this._loadGenerations.TryGetValue( value, out var loadGeneration ) && loadGeneration.Value >= generation;
+
+    // Returns null when the decision cannot be cached because a dependency cannot be invalidated.
+    private List<IChangeToken>? GetTokens( object securableKey, List<ISecurable> dependencies )
+    {
+        var dependencyKeys = new List<object>();
+
+        foreach ( var dependency in dependencies )
         {
             var dependencyKey = this._getKey( dependency );
 
-            // A dependency without a key cannot be invalidated, so the decision cannot be cached either.
             if ( dependencyKey == null )
             {
-                return [new CancellationChangeToken( new CancellationToken( true ) )];
+                return null;
             }
 
-            tokens.Add( this.GetObjectToken( dependencyKey ) );
+            dependencyKeys.Add( dependencyKey );
         }
 
-        return tokens;
+        // The tokens are read under the lock, so that no token source is disposed while its token is read.
+        lock ( this._tokenLock )
+        {
+            var tokens = new List<IChangeToken> { new CancellationChangeToken( this._allToken.Token ), this.GetObjectToken( securableKey ) };
+
+            foreach ( var dependencyKey in dependencyKeys )
+            {
+                tokens.Add( this.GetObjectToken( dependencyKey ) );
+            }
+
+            return tokens;
+        }
     }
 
     // The token of an object is stored in the cache too, so that the tokens of the objects that are no longer used are
     // removed. When the token is evicted, it is canceled, so that no decision survives the token that invalidates it.
-    // The lock makes sure that only one token exists for an object: a decision bound to a second token would not
-    // be invalidated.
+    // The caller holds the lock, which makes sure that only one token exists for an object: a decision bound to a
+    // second token would not be invalidated.
     private CancellationChangeToken GetObjectToken( object key )
     {
-        lock ( this._tokenLock )
+        if ( !this._cache.TryGetValue( new TokenKey( key ), out CancellationTokenSource? source ) )
         {
-            if ( !this._cache.TryGetValue( new TokenKey( key ), out CancellationTokenSource? source ) )
-            {
-                source = new CancellationTokenSource();
+            source = new CancellationTokenSource();
 
-                var options = new MemoryCacheEntryOptions { SlidingExpiration = 2 * this._expiration, Size = 1 };
-                options.RegisterPostEvictionCallback( static ( _, value, _, _ ) => ((CancellationTokenSource) value!).Cancel() );
+            var options = new MemoryCacheEntryOptions { SlidingExpiration = 2 * this._expiration, Size = 1 };
 
-                this._cache.Set( new TokenKey( key ), source, options );
-            }
+            // Invalidate removes the entry after it has canceled and disposed the token source. Any other eviction
+            // cancels it here, under the lock, so that it is not disposed while another thread reads its token.
+            options.RegisterPostEvictionCallback(
+                ( _, value, reason, _ ) =>
+                {
+                    if ( reason != EvictionReason.Removed )
+                    {
+                        lock ( this._tokenLock )
+                        {
+                            var evicted = (CancellationTokenSource) value!;
+                            evicted.Cancel();
+                            evicted.Dispose();
+                        }
+                    }
+                } );
 
-            return new CancellationChangeToken( source!.Token );
+            this._cache.Set( new TokenKey( key ), source, options );
         }
+
+        return new CancellationChangeToken( source!.Token );
     }
 
     // Private types, so that the keys cannot collide with the keys of other components that share the cache.

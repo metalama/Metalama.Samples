@@ -1,5 +1,6 @@
+using Metalama.Framework.RunTime.Initialization;
 namespace Metalama.Samples.Authorization.Tests.GrantsPermissions_Interface;
-public class Invoice : ISecurable
+public class Invoice : ISecurable, IInitializable
 {
   private readonly decimal _total;
   [RequiresPermission("Read")]
@@ -14,6 +15,14 @@ public class Invoice : ISecurable
     {
       _total = value;
     }
+  }
+  public Invoice()
+  {
+    SecurityContext.BeginInitialization(this);
+  }
+  public virtual void Initialize(InitializationContext context = default)
+  {
+    SecurityContext.EndInitialization(this);
   }
 }
 // The aspects on the parameter of an interface method are inherited by the parameter of every implementation.

@@ -224,6 +224,31 @@ public class WorkflowTests : IAsyncLifetime
     }
 
     [Fact]
+    public void MakingOneselfTheOwner_IsDenied()
+    {
+        var exception = Assert.Throws<AccessDeniedException>(
+            () => this.As( this._org.Mia, () => this._org.SalesInvoice.Owner = this._org.Mia ) );
+
+        Assert.Contains( "cannot make themself the owner", exception.Message, StringComparison.Ordinal );
+    }
+
+    [Fact]
+    public void CreatingAnInvoice_MakesTheCreatorItsOwner()
+        => this.As(
+            this._org.Sam,
+            () =>
+            {
+                // The constructor sets the owner while the invoice is being initialized.
+                var invoice = this._org.Sales.CreateInvoice( this._org.Fabrikam );
+
+                Assert.Equal( this._org.Sam, invoice.Owner );
+            } );
+
+    [Fact]
+    public void RevokingOneselfARole_IsDenied()
+        => this.Denied( this._org.Mia, () => this._org.Sales.RevokeRole( this._org.Mia, DemoRoles.DepartmentManager ) );
+
+    [Fact]
     public void ReassigningTheOwner_DoesNotBypassTheFourEyesPrinciple()
     {
         Invoice invoice = null!;

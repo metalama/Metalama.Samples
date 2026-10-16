@@ -4,7 +4,7 @@ level: 300
 summary: "This example enforces a role-based authorization model with Metalama aspects: permission checks on methods, properties, fields and parameters, default permissions inherited by all business objects, and build-time configuration with hierarchical options."
 keywords: "authorization, permissions, role-based access control, RBAC, security, aspect, hierarchical options, fabrics, contracts"
 created-date: 2026-10-15
-modified-date: 2026-10-15
+modified-date: 2026-10-16
 ---
 
 # Enforcing authorization with aspects
@@ -98,7 +98,7 @@ The rule has a consequence for aggregates. It is common that a user may see an a
 
 ### GrantsPermissions
 
-The `[GrantsPermissions]` aspect grants permissions while a member runs. On a method, a property or a constructor, it grants them on the current instance. On a parameter, it grants them on the argument. In the demo, a department assistant may see whether the budget of their department is available, low or exhausted, but not its amounts. The `Status` property requires `Read`, and computes the level from `Amount` and `Remaining`, which require `ReadSensitive`:
+The `[GrantsPermissions]` aspect grants permissions while a member runs. On a method or a property, it grants them on the current instance. On a parameter, it grants them on the argument. In the demo, a department assistant may see whether the budget of their department is available, low or exhausted, but not its amounts. The `Status` property requires `Read`, and computes the level from `Amount` and `Remaining`, which require `ReadSensitive`:
 
 ```csharp
 [RequiresPermission( PermissionNames.Read )]
@@ -123,14 +123,7 @@ Task SendAsync(
 
 [!metalama-test ../tests/Metalama.Samples.Authorization.Tests/GrantsPermissions_Interface.cs]
 
-On a constructor, the grant gives the constructor access to the secured members of the new object. In the demo, `Department.CreateInvoice` requires `CreateInvoice` on the department. It then calls the constructor of `Invoice`, which sets the due date and the owner of the new invoice. These members require `Write` and `ChangeOwnership`, which the creator does not always have, so the constructor grants them:
-
-```csharp
-[GrantsPermissions( PermissionNames.Write, PermissionNames.ChangeOwnership )]
-internal Invoice( Department department, Customer customer, string number, User? creator )
-```
-
-`Department.CreateInvoice` also increments the invoice counter of the department. The counter declares `CreateInvoice` as its write permission, which the method has already checked. The method grants `Read` on the department, so the numbering of the invoices does not depend on a rule of the policy. An earlier version of the demo opened a system scope with `SecurityContext.RunAsSystem` in `CreateInvoice`. A system scope disables every check, on every object, including the checks of the code that the method calls. The two grants give only the permissions that the code needs, and only on the department and on the new invoice.
+`Department.CreateInvoice` requires `CreateInvoice` on the department, and increments the invoice counter of the department. The counter declares `CreateInvoice` as its write permission, which the method has already checked. The method grants `Read` on the department, so the numbering of the invoices does not depend on a rule of the policy. An earlier version of the demo opened a system scope with `SecurityContext.RunAsSystem` in `CreateInvoice`. A system scope disables every check, on every object, including the checks of the code that the method calls. The grant gives only the permission that the code needs, and only on the department. The constructor of the new invoice needs no grant (see [Constructing an object](#constructing-an-object)).
 
 A method can also grant a permission that no role has. The status, the payments and the void reason of an invoice require `ChangeStatus` to change, and no rule of the policy gives `ChangeStatus` to a role. The methods of the workflow, `Approve`, `SendAsync`, `RecordPayment` and `Void`, grant it while they run, after their own permission has been checked. Changing the status is then a consequence of an operation of the workflow, and no other code can do it, even with the `Write` permission:
 
@@ -148,8 +141,7 @@ The grant is a scope of the ambient security context. `SecurityContext.Grant` st
 The aspect is designed to give the smallest possible grant:
 
 * The order of the aspects is critical. `[RequiresPermission]` is the outer aspect and `[GrantsPermissions]` is the inner one. The grant starts only after the permission of the member has been checked, so the grant cannot satisfy this permission. The parameter checks also run before the grant. The order is declared with `[assembly: AspectOrder]`. The same declaration orders `[SecurableType]`, which must be processed before `[RequiresPermission]` because it adds `[RequiresPermission]` aspects.
-* The member must have a permission check, explicit or added by default. Otherwise any caller would get the granted permissions, so the validator reports the error `AUTH004`. A constructor does not need a check: it grants permissions on the object that it creates, and no caller can access this object before the constructor returns.
-* On a constructor, the grant starts after the call to the base constructor, or to another constructor of the class with `: this(...)`. It does not cover the initializers of fields and properties, which set the backing fields without a check.
+* The member must have a permission check, explicit or added by default. Otherwise any caller would get the granted permissions, so the validator reports the error `AUTH004`.
 * The grant applies to one object only: the current instance, or the argument of the parameter. A member that reads the details of another object needs the permissions of the subject on that object. A null argument gets no grant.
 * The grant applies only in the current context. When code switches to another subject with `SecurityContext.Use`, the grants of the previous subject do not apply.
 * The grant ends when the member returns. In an `async` member, it covers the continuations. An iterator is not eligible, because its body runs when the caller enumerates the result, after the member has returned. An automatic property is not eligible either, because it has no code that could use the grant.
@@ -158,6 +150,43 @@ The aspect is designed to give the smallest possible grant:
 A grant takes precedence over the policy, including its denials. This is the purpose of the aspect, and also its risk: the body of the member must not return the details that the grant makes readable. Like an explicit exclusion from default securing, each grant is visible in the code and in a review. A grant also applies to the tasks that the member starts, because `AsyncLocal<T>` values flow into them. A member with a grant should therefore not start a task that runs after the member returns.
 
 [!metalama-file Metalama.Samples.Authorization/Framework/GrantsPermissionsAttribute.cs]
+
+### Constructing an object
+
+The code that creates an object has unlimited rights on this object while it is initialized: from the first constructor that runs to the end of the object initializer. No other code can access the object before its construction ends, so setting it up is not an access to the data of somebody else. In the demo, the constructor of `Invoice` sets the department, the customer, the due date and the owner of the new invoice, and the creator needs neither `Write` nor `ChangeOwnership`:
+
+```csharp
+internal Invoice( Department department, Customer customer, string number, User? creator )
+{
+    this.Department = department;
+    this.Customer = customer;
+    this.Number = number;
+    this.CreatorUser = creator;
+    this.Owner = creator;
+    this.DueDate = DateOnly.FromDateTime( DateTime.Today ).AddDays( 30 );
+}
+```
+
+`[SecurableType]` adds two initializers to every securable class:
+
+* A `BeforeInstanceConstructor` initializer calls `SecurityContext.BeginInitialization( this )` before the code of the constructors.
+* An `AfterObjectInitializer` initializer calls `SecurityContext.EndInitialization( this )` from the `Initialize` method that Metalama introduces. Metalama rewrites each `new` expression of a securable class to call `Initialize` after the object initializer, so `new Folder { Owner = creator }` is not checked either.
+
+`AccessGuard.Demand` does not check an access to an object that is being initialized in the current execution context. The access is not cached, and it is audited like a granted access. The accesses to other objects are checked as usual: a constructor that reads another object needs the permissions of the subject on that object.
+
+The initialization is recorded in the current execution context, not on the object:
+
+* Another request, or a thread that does not share the execution context, checks the object as usual.
+* A grant shares the objects being initialized with its parent, because it keeps the subject. `SecurityContext.Use` does not, because it changes the subject.
+* Nothing is recorded in a system scope, where nothing is checked anyway. Entity Framework creates the objects that it loads in a system scope, so loading an object does not open it.
+* Nothing is recorded without an execution context, so a constructor that sets secured members without a context fails closed.
+
+Metalama calls `Initialize` only at the call sites that it compiles. An object created by reflection, by a serializer, or by an assembly that is not compiled with Metalama is never marked as initialized. Its creator keeps unlimited rights on it until the end of the current execution context. Because the initialization is recorded in the execution context, the rights cannot reach another request.
+
+The introduced `Initialize` method is public. `[SecurableType]` excludes it from default securing, because a check would fail for every creator who cannot write the object.
+
+> [!NOTE]
+> Metalama rewrites a `new` expression of a securable class even inside an expression tree, where the rewritten call does not compile (error `CS0854`). The value converter of `Invoice.Notes` in `InvoicingDbContext` therefore creates its lists in static methods, and not in its lambda expressions.
 
 ### ISecurable and SecurableType
 
@@ -283,8 +312,10 @@ The generated code calls `AccessGuard.Demand`:
 * Without a current context, the access fails. A missing context is a configuration error, not a reason to skip security.
 * The policy runs in a system scope. The policy reads secured members, such as the owner of the object, and these reads must not trigger checks recursively.
 * The auditor runs outside of the system scope. An auditor that reads data or writes to a secured store does it with the permissions of the current subject, not with implicit privileges.
-* `AccessGuard.Deny` refuses an operation for a reason that is not a missing permission, and audits it like any other denial. The role-based layer uses it to refuse that a user assigns a role to themself.
+* An access to an object that is being initialized is not checked (see [Constructing an object](#constructing-an-object)).
+* `AccessGuard.Deny` refuses an operation for a reason that is not a missing permission, and audits it like any other denial. The role-based layer uses it to refuse that a user assigns a role to themself, revokes a role from themself, or makes themself the owner of an object.
 * The decision is cached in the current execution context. Each access is still audited, because the auditor records accesses, not decisions.
+* A granted access with `ChangeOwnership` or `ManageRoles` changes the data that the role-based policy reads. After it, `AccessGuard` clears the cache of the current execution context and of the execution contexts that contain it, and removes the decisions on the object from the shared cache (see [Caching the decisions](#caching-the-decisions)).
 
 ### Caching the decisions
 
@@ -295,18 +326,21 @@ The first level is the execution context. `SecurityContext.Use` starts an execut
 * The cache is an immutable dictionary, `ImmutableDictionary<ISecurable, ImmutableList<(Permission, bool)>>`. It compares the objects by reference, and it contains the denials as well as the grants.
 * The `AsyncLocal<T>` field holds a reference to the execution context, and a new decision replaces the dictionary of the execution context with `ImmutableInterlocked`. The value of the `AsyncLocal<T>` field does not change. A decision cached by an `async` method is therefore visible to its caller after the method returns, and concurrent tasks add decisions without a lock.
 * A grant breaks the execution context. `SecurityContext.Grant` starts a child execution context with an empty cache, because the decisions of the parent do not take the grant into account. When the grant ends, the parent execution context is restored, without the decisions of the child, which took the grant into account.
-* The cache is never invalidated. An operation runs with a consistent set of decisions, and a change of the rights applies to the execution contexts that start after it. A long-running operation, such as a background job, keeps the decisions of its start. It should start an execution context for each unit of work.
+* The cache is cleared only after an access that changes the rights: a granted `ChangeOwnership` or `ManageRoles`. The access is checked before the change, so the next checks of the operation see the new rights. Any other change of the rights applies to the execution contexts that start after it. A long-running operation, such as a background job, keeps the decisions of its start. It should start an execution context for each unit of work.
 
 The second level is shared by all the execution contexts of the process. `CachingAuthorizationPolicy` wraps a policy and caches its decisions in an `IMemoryCache`. It is called only when the cache of the execution context does not contain the decision, so it does not change the consistency of an operation.
 
 * The keys identify the subject and the object, not their instances, because each request loads new instances. The demo uses the class and the database key of each entity. An object without a key, for instance an invoice that has not been saved, is not cached.
 * The cache is invalidated manually. `Invalidate` removes the decisions on an object, and on the objects that depend on it, for instance the objects that inherit their roles from it. `InvalidateAll` removes all decisions. Each object has a cancellation token, stored in the memory cache too, so that the tokens of the objects that are no longer used are removed. When a token is evicted, it is canceled, so no decision survives the token that invalidates it.
 * The tokens are taken before the policy runs. When an invalidation happens while the policy runs, the new entry has a canceled token and expires immediately.
+* A decision is shared only when the data that it was made from is current. Each invalidation increments `CachingAuthorizationPolicy.Generation`, and the data access layer calls `RecordLoad` when it loads an object. A decision on an object, or on one of its dependencies, that was loaded before the last invalidation may come from data that has changed since then, so it is not shared. Without this rule, a request that loaded an invoice before another request gave it to a new owner would cache the decision of the former owner under a new token, and every other request would see it until it expires. A decision on an object whose load was not recorded is not shared either.
 * A decision also expires after five minutes, even without invalidation.
 
 [!metalama-file Metalama.Samples.Authorization/Framework/CachingAuthorizationPolicy.cs]
 
-In the demo, `PermissionCacheInvalidationInterceptor` invalidates the cache after each save. A changed or deleted entity is invalidated, because its owner or its parent may have changed. A change of the role assignments invalidates all the decisions, because the roles of an object apply to all its descendants, and role assignments change rarely. `DatabaseAuthorizationPolicy` raises its `Reloaded` event after it reloads the rules, and the cache is cleared then.
+In the demo, `PermissionCacheInvalidationInterceptor` invalidates the cache when a change is visible to the other requests: after the save, or, when the save runs in an explicit transaction, after the commit. A rolled-back transaction invalidates nothing. A changed or deleted entity is invalidated, because its owner or its parent may have changed. A change of the role assignments invalidates all the decisions, because the roles of an object apply to all its descendants, and role assignments change rarely. `DatabaseAuthorizationPolicy` raises its `Reloaded` event after it reloads the rules, and the cache is cleared then. `SystemScopeMaterializationInterceptor` records the load of each entity.
+
+The two interceptors are single instances. Entity Framework creates an internal service provider for each set of interceptor instances, so an instance for each application would create one per test. They find the cache through `InvoicingDbContext.CachingPolicy`.
 
 [!metalama-file Metalama.Samples.Authorization.Demo/Data/PermissionCacheInvalidationInterceptor.cs]
 
@@ -320,9 +354,9 @@ The auditor receives every denial. It can also select permissions whose grants i
 
 ### Trust boundary
 
-The framework enforces authorization inside a process. It protects against missing checks, not against malicious code: any code of the process can call `SecurityContext.Use`, `SecurityContext.Grant` or `SecurityContext.RunAsSystem`. Only trusted infrastructure calls them, such as the authentication middleware or the database seeder. `SecurityContext.Current` has no public setter, so the only way to change it is a scope that restores the previous value. A context or a system scope also applies to the tasks started while it is active, because `AsyncLocal<T>` values flow into them.
+The framework enforces authorization inside a process. It protects against missing checks, not against malicious code: any code of the process can call `SecurityContext.Use`, `SecurityContext.Grant` or `SecurityContext.RunAsSystem`. Only trusted infrastructure calls them, such as the authentication middleware or the database seeder. `SecurityContext.Current` has no public setter, so the only way to change it is a scope that restores the previous value. A context or a system scope also applies to the tasks started while it is active, because `AsyncLocal<T>` values flow into them. `SecurityContext.Use` ends a system scope until its own scope is disposed: switching to a subject drops the privileges of the system scope.
 
-`SecurityContext` stores the current execution context, which holds the context, the grants and the cache, and the system scope in `AsyncLocal<T>` fields. They follow `async` code and stay isolated between concurrent requests. The scopes are `SecurityScope` structures, so opening one does not allocate an object. Disposing the default value of the structure does nothing.
+`SecurityContext` stores the current execution context, which holds the context, the grants, the cache and the objects being initialized, and the system scope in `AsyncLocal<T>` fields. They follow `async` code and stay isolated between concurrent requests. The scopes are `SecurityScope` structures, so opening one does not allocate an object. Disposing the default value of the structure does nothing.
 
 [!metalama-file Metalama.Samples.Authorization/Framework/SecurityContext.cs]
 
@@ -351,78 +385,7 @@ The company Contoso has three departments: Sales, Marketing and Engineering. Dep
 
 ### The security model from the business point of view
 
-This section describes who may do what, in the words of the business, without reference to the code. A reviewer can compare it with the policy and the tests below. The identifiers, such as `INV-4`, also appear in the permission matrix of the tests.
-
-#### Positions
-
-| Position | Works for | Job |
-|---|---|---|
-| Department manager | one or more departments | Runs the department: approves its invoices, decides the commercial terms of its customers, follows its budget, and staffs it. |
-| Department assistant | one department | Prepares and sends the invoices of the department, and keeps the customer contact details up to date. |
-| Accountant | the whole company | Collects payments, cancels invoices, and manages the budgets. |
-| Auditor | the whole company | Checks the books. Sees everything and changes nothing. |
-| Administrator | the whole company | Manages user accounts and access rights. Is not involved in the business. |
-
-The person who creates an invoice is its owner. A person can hold several positions, for instance an auditor who also manages a department.
-
-#### Company directory
-
-* `DIR-1`: Every user, even without any position, can see the name of the company, the names of the departments, and who holds which position in each department.
-* `DIR-2`: Nobody can rename the company or a department in the application.
-
-#### Invoices
-
-* `INV-1`: The invoice number is not confidential. Every user can see it.
-* `INV-2`: The content of an invoice is visible to the staff of its department, to its owner, to accountants and to auditors. Nobody else can see it, administrators included.
-* `INV-3`: The staff of a department can create invoices for the department, only for a customer whose record they can see (`CUS-1`). For instance, a person who works in Sales and in Marketing can invoice a Sales customer from Marketing.
-* `INV-4`: Before approval, the owner and the staff of the department can edit the invoice, including the customer that it bills. The new customer must be one whose record they can see. Accountants cannot edit invoice content.
-* `INV-5`: Only a manager of the department can approve an invoice. Nobody can approve an invoice that they created or that they own (four-eyes principle), even after giving the invoice to another owner. An auditor cannot approve, even as a manager.
-* `INV-6`: The staff of the department send the approved invoices to the customer.
-* `INV-7`: Only accountants record payments.
-* `INV-8`: Only accountants cancel (void) invoices.
-* `INV-9`: A manager of the department can give the invoice to another owner.
-* `INV-10`: A manager can move an invoice from one department to another only when they manage both departments.
-* `INV-11`: An invoice has internal notes. Everyone who can see the invoice can read them. The owner and the staff of the department can add or remove notes, at any status.
-
-#### Customers
-
-* `CUS-1`: A customer is managed by one department. Its record is visible to the staff of the department, to accountants and to auditors.
-* `CUS-2`: The staff of the department can change the contact details of the customer.
-* `CUS-3`: The tax ID of a customer is confidential. Only the managers of the department, accountants and auditors can see it. Administrators never see it.
-* `CUS-4`: Only a manager of the department can change the commercial terms of a customer: credit limit and payment terms.
-* `CUS-5`: A manager can move a customer from one department to another only when they manage both departments.
-
-#### Budgets
-
-* `BUD-1`: Budgets are confidential. The budget of a department is visible to its managers, to accountants and to auditors. Department assistants cannot see it.
-* `BUD-2`: Only accountants change budgets and record spending.
-* `BUD-3`: The staff of a department, assistants included, can see whether the budget of their department is available, low or exhausted, without seeing its amounts.
-
-#### Access rights
-
-* `ACC-1`: Administrators create user accounts, and assign and revoke positions everywhere.
-* `ACC-2`: A department manager assigns and revokes positions in the departments they manage, and nowhere else.
-* `ACC-3`: A change of position takes effect immediately, for every user.
-* `ACC-4`: Nobody can give themself a position, administrators included.
-
-#### General principles
-
-* `GEN-1`: Separation of duties: an auditor never changes anything, whatever other position they hold.
-* `GEN-2`: Least privilege: administrators manage access, but do not see business data.
-* `GEN-3`: Every refused operation is recorded in a security log, and so is every change of positions or of ownership. A refusal message names the object only by its type and number, so that it discloses nothing to a user who cannot see the object.
-* `GEN-4`: Some operations are refused for business reasons, not for security reasons. For instance, an approved invoice cannot be edited, an invoice without lines cannot be approved, and a paid invoice cannot be voided. These refusals are not security events.
-
-#### Questions for the reviewer
-
-The current model has the following properties. They are deliberate in this example, but a real business may decide otherwise:
-
-* A department assistant can overwrite the tax ID of a customer, although they cannot see it (`CUS-2`, `CUS-3`).
-* The status of a budget discloses a part of its amounts: a department assistant knows when less than a tenth of the budget remains (`BUD-1`, `BUD-3`).
-* A department manager can assign any position in their department to another person, including a position with more rights than their own, such as accountant (`ACC-2`). They cannot take it themself (`ACC-4`), but a real system also restricts which positions each position may assign.
-* The owner of an invoice keeps access to it after the invoice moves to another department (`INV-2`, `INV-10`).
-* Every user can see who holds which position (`DIR-1`).
-* The rules do not depend on the status of an object. For instance, a manager can change the credit limit of a customer at any time.
-* The rules protect the content of the objects, not their existence. A user can search for invoices that they are not allowed to read; the search returns the invoices, but their content stays protected.
+The [security model of the demo](Metalama.Samples.Authorization.Demo/README.md) describes who may do what, in the words of the business, without reference to the code: the positions, and the rules on invoices, customers, budgets and access rights. Each rule has an identifier, such as `INV-4`, which also appears in the permission matrix of the tests.
 
 ### How the demo implements the model
 
@@ -468,9 +431,9 @@ Each rule is a `PermissionRuleRecord`, which stores the class, the permission an
 `DatabaseAuthorizationPolicy` is the policy of the application. It loads the rules from the database with `ReloadAsync`, and builds an immutable `RoleBasedAuthorizationPolicy` with the non-generic `RoleBasedAuthorizationPolicyBuilder.Add` method. After an administrator changes the rules, a new call to `ReloadAsync` replaces the policy, and the change applies to the next check of every request. The policy is fail-closed in two ways:
 
 * Before the rules are loaded, every check is denied.
-* A rule on an unknown class makes the reload fail, and the previous rules stay in force. Ignoring such a rule could silently remove a `Deny` rule.
+* A rule on an unknown class, an unknown permission or an unknown role makes the reload fail, and the previous rules stay in force. A mistyped name would match no object, no check or no subject, so loading the rule could silently remove a `Deny` rule. For instance, a rule stored as "Deny Write to Auditer" would let the auditors write.
 
-A role is resolved from its name by `DemoRoles.FromName`. The computed roles are known to the code, because the objects compute them. Any other name is an assigned role, so an administrator can create a new position without changing the code.
+A role is resolved from its name by `DemoRoles.FromName`, which knows the roles of the application, and a permission must be a constant of `PermissionNames` or `DemoPermissions`. A new role therefore requires a change of `DemoRoles`.
 
 [!metalama-file Metalama.Samples.Authorization.Demo/Data/DatabaseAuthorizationPolicy.cs]
 
@@ -521,7 +484,7 @@ The services, such as `InvoiceService`, load the objects, call the domain method
 Entity Framework reads and writes every mapped property when it loads an object, detects changes, and saves them. These operations belong to the infrastructure, not to the user, and they often run without a security context. They must not go through the secured accessors. The demo follows these rules:
 
 * The model uses `PropertyAccessMode.Field`. Entity Framework reads and writes the backing fields directly, including the fields that Metalama generates when it overrides an auto-property.
-* `SystemScopeMaterializationInterceptor` creates each entity in a system scope, with its parameterless constructor, which can be private. Constructors can therefore set secured properties, for instance by chaining to the constructor that the application uses. The scope is closed by a `using` statement, so it cannot remain open after a failure.
+* `SystemScopeMaterializationInterceptor` creates each entity in a system scope, with its parameterless constructor, which can be private, and records its load for the shared cache of decisions. Constructors can therefore set secured properties, for instance by chaining to the constructor that the application uses. The scope is closed by a `using` statement, so it cannot remain open after a failure.
 * Entity Framework fills collections through their backing field, before the first access through the property, so a `SecurableList<T>` has no owner yet and checks nothing. A primitive collection, such as `Invoice.Notes`, is assigned by Entity Framework when it loads the object, so a value converter recreates a `SecurableList<T>`.
 * `EfRoleBasedSecurable`, the base class of `Entity`, stores the owner as a `User` navigation and the role assignments as an owned collection of `RoleAssignmentRecord`. `ConfigureRoleBasedStorage` maps them for each entity class. These storage members are excluded from default securing with `[AuthorizationOptions( IsDefaultSecuringEnabled = false )]`. The public `Owner` and `RoleAssignments` members are the secured views of these members, and the model ignores them.
 * The navigations that the security model needs are loaded automatically with `AutoInclude`: the parent chain of each object, its owner, and its role assignments. Otherwise, a role inherited from a parent that is not loaded would be missed. The policy would then deny the access, which is safe but wrong.
@@ -546,14 +509,15 @@ The aspect tests in `Metalama.Samples.Authorization.Tests` verify the generated 
 
 `Metalama.Samples.Authorization.UnitTests` tests the framework on small test types, independently of the demo:
 
-* `SecurityContextTests`: fail-closed behavior, system scopes, and context isolation across `await` and concurrent tasks.
+* `SecurityContextTests`: fail-closed behavior, system scopes, `Use` that ends a system scope, and context isolation across `await` and concurrent tasks.
+* `InitializationTests`: unlimited rights on an object while its constructors and its object initializer run, the checks on other objects, the checks after the initialization, and a constructor without a context that fails closed.
 * `NestedAccessTests`: the permission of a member does not grant the permissions of the members that it accesses, including private state.
-* `PermissionCacheTests`: the cache of an execution context, shared by the `async` methods and the tasks of the context, the denials cached and still audited, the grant that breaks the execution context, and a change of rights that applies to the next execution context.
-* `CachingAuthorizationPolicyTests`: the cache shared by all execution contexts, the objects without a key, the invalidation of an object and of its descendants, and an invalidation while the policy runs.
-* `GrantsPermissionsTests`: a grant gives its permissions after the check of the member, on the current instance only, in the current context only, and until the member returns, also across `await`. It takes precedence over the denials of the policy. A constructor grants its permissions on the new object only, until it returns.
+* `PermissionCacheTests`: the cache of an execution context, shared by the `async` methods and the tasks of the context, the denials cached and still audited, the grant that breaks the execution context, a change of rights that applies to the next execution context, and a change of owner that clears the cache at once.
+* `CachingAuthorizationPolicyTests`: the cache shared by all execution contexts, the objects without a key or without a recorded load, the objects loaded before an invalidation, the invalidation of an object and of its descendants, and an invalidation while the policy runs.
+* `GrantsPermissionsTests`: a grant gives its permissions after the check of the member, on the current instance only, in the current context only, and until the member returns, also across `await`. It takes precedence over the denials of the policy.
 * `AccessGuardTests`: audit records of denials and grants, labels in messages, and an auditor that runs without privileges.
 * `SecurableListTests`: the owner set on the first access and only once, changes denied without the write permission, with the kind of change, read-only properties secured too, the getter that fails closed on an ordinary list, and the owner hook.
-* `RoleBasedPolicyTests`: allow and deny rules, class hierarchy, built-in and application-defined computed roles, role inheritance through any parent, self-assignment, and the immutability of the policy.
+* `RoleBasedPolicyTests`: allow and deny rules, class hierarchy, built-in and application-defined computed roles, role inheritance through any parent, self-assignment, self-revocation, self-ownership except for the creator of an object, and the immutability of the policy.
 
 ### Unit tests of the demo security model
 
@@ -566,23 +530,25 @@ Op( "INV-5: Approve a sales invoice", org => org.SalesInvoice.Approve(), Mia ),
 Op( "CUS-3: Read a customer tax ID", org => _ = org.Fabrikam.TaxId, Mia, Ada, Otto, Grace ),
 ```
 
-Each row starts with the identifier of the business requirement that it checks (see [The security model from the business point of view](#the-security-model-from-the-business-point-of-view)), so the name of each test case gives the requirement, the operation, the user and the expected outcome.
+Each row starts with the identifier of the business requirement that it checks (see the [security model of the demo](Metalama.Samples.Authorization.Demo/README.md)), so the name of each test case gives the requirement, the operation, the user and the expected outcome.
 
 The `PermissionMatrixTests` theory runs every operation as every user, on a fresh database. The objects are loaded from the database before the operation. The operation must succeed for the users of the row and throw `AccessDeniedException` for all the others. After a successful operation, the test saves the changes as the user, which must not trigger any check. Each row therefore checks both the grants and the denials, and adding a row is enough to cover a new operation. The rows describe the intended business rules, independently of how `DemoPolicy` implements them. The matrix found a gap during the development of this example: an auditor who was also a department manager could create invoices.
 
 The other test classes cover what a single operation cannot show:
 
-* `WorkflowTests`: the invoice lifecycle, role changes that take effect once they are saved, transfers that change who inherits access, and the difference between a denied permission and a broken business rule.
+* `WorkflowTests`: the invoice lifecycle, the creator who becomes the owner, the users who cannot make themselves the owner or revoke their own role, role changes that take effect once they are saved, transfers that change who inherits access, and the difference between a denied permission and a broken business rule.
 * `OptionsBehaviorTests`: proof at run time that each build-time option took effect.
 * `StructuralRulesTests`: the guarantees that do not depend on the policy, such as init-only names, private setters for references to secured objects, and read-only collections.
 * `AuditTests`: the content of audit records for the demo operations.
-* `PolicyStorageTests`: the rules are stored in the database, a changed rule takes effect after a reload, a rule on an unknown class makes the reload fail without changing the policy, and a policy without rules denies everything.
+* `PolicyStorageTests`: the rules are stored in the database, a changed rule takes effect after a reload, a rule on an unknown class, permission or role makes the reload fail without changing the policy, and a policy without rules denies everything.
+* `SharedCacheTests`: a request that works on data loaded before a change does not share its decisions, and a save in a transaction invalidates the shared cache after the commit, and not after a rollback.
 * `PersistenceTests`: loading and saving run no check; every field of every entity is mapped; authorized changes and role assignments are persisted and effective in a new database context; denied changes leave the database unchanged; queries are not filtered; and complete workflows run through the services as separate requests, including concurrent requests of different users.
 
 ## Limitations
 
-* The cache of an execution context is never invalidated. A long-running operation keeps the decisions of its start.
-* The cache shared by all execution contexts is invalidated after a save. The other requests do not see a change that is not saved. A request that loaded the data before a save, and that asks the policy after the invalidation, can cache a decision made on the old data until it expires.
+* The cache of an execution context is cleared only after a change of the owner or of the role assignments. A long-running operation keeps the decisions of its start.
+* The cache shared by all execution contexts is invalidated after a save, in the process that saves. The other requests do not see a change that is not saved. Another instance of the application, or a change made directly in the database, is seen only when the decisions expire, after five minutes.
+* An object created by reflection, by a serializer, or by an assembly that is not compiled with Metalama is not marked as initialized, so its creator keeps unlimited rights on it until the end of the execution context.
 * Every access to a field or a property runs a check. A check that finds its decision in the cache of the execution context costs a dictionary lookup and the allocation of a `Permission`.
 * Rules apply to types, not to object states. "Only draft invoices can be edited" is a business rule in the `Invoice` methods.
 * A department manager can assign any role in their department to another person, including a role with more rights than their own. Nobody can assign a role to themself, but a real system also restricts which roles each role may assign.

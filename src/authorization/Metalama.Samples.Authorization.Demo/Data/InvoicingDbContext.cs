@@ -10,8 +10,16 @@ namespace Metalama.Samples.Authorization.Demo.Data;
 /// <summary>
 /// The Entity Framework model of the invoicing application (code first).
 /// </summary>
-public sealed class InvoicingDbContext( DbContextOptions<InvoicingDbContext> options ) : DbContext( options )
+public sealed class InvoicingDbContext( DbContextOptions<InvoicingDbContext> options, CachingAuthorizationPolicy cachingPolicy )
+    : DbContext( options )
 {
+    /// <summary>
+    /// Gets the shared cache of decisions, which the interceptors of the context maintain. The interceptors are
+    /// single instances, because Entity Framework creates an internal service provider for each set of interceptor
+    /// instances, so they find the cache through the context.
+    /// </summary>
+    internal CachingAuthorizationPolicy CachingPolicy { get; } = cachingPolicy;
+
     public DbSet<User> Users => this.Set<User>();
 
     public DbSet<Company> Companies => this.Set<Company>();
@@ -75,11 +83,11 @@ public sealed class InvoicingDbContext( DbContextOptions<InvoicingDbContext> opt
                     invoice.Property( i => i.Notes )
                         .HasConversion(
                             notes => JsonSerializer.Serialize( notes, (JsonSerializerOptions?) null ),
-                            json => new SecurableList<string>( JsonSerializer.Deserialize<List<string>>( json, (JsonSerializerOptions?) null ) ?? new List<string>() ),
+                            json => DeserializeNotes( json ),
                             new ValueComparer<IList<string>>(
                                 ( left, right ) => left!.SequenceEqual( right! ),
                                 notes => notes.Aggregate( 0, ( hash, note ) => HashCode.Combine( hash, note ) ),
-                                notes => new SecurableList<string>( notes ) ) );
+                                notes => CopyNotes( notes ) ) );
                 } );
 
         ConfigureSecurable<Budget>( modelBuilder )
@@ -101,6 +109,13 @@ public sealed class InvoicingDbContext( DbContextOptions<InvoicingDbContext> opt
         modelBuilder.Entity<Invoice>().Navigation( "CreatorUser" ).AutoInclude();
         modelBuilder.Entity<Budget>().Navigation( b => b.Department ).AutoInclude();
     }
+
+    // The lists are created in methods, and not in the expression trees of the converter: Metalama rewrites the
+    // construction of a securable object to call its Initialize method, which an expression tree cannot contain.
+    private static SecurableList<string> DeserializeNotes( string json )
+        => new( JsonSerializer.Deserialize<List<string>>( json, (JsonSerializerOptions?) null ) ?? [] );
+
+    private static SecurableList<string> CopyNotes( IList<string> notes ) => new( notes );
 
     // SQLite cannot generate the composite key that Entity Framework gives to owned collections by default.
     private static void UseSingleColumnKey<TOwner, TOwned>( OwnedNavigationBuilder<TOwner, TOwned> owned )

@@ -1,3 +1,4 @@
+using Metalama.Framework.RunTime.Initialization;
 using Metalama.Samples.Authorization.RoleBased;
 namespace Metalama.Samples.Authorization.Demo.Sales;
 public sealed class Quote : Entity
@@ -45,4 +46,13 @@ public sealed class Quote : Entity
   // Not secured: the option set on the base member in the library is inherited by the override.
   protected override IRoleBasedSecurable? SecurityParent => null;
   public override string ToString() => "quote";
+  public Quote()
+  {
+    SecurityContext.BeginInitialization(this);
+  }
+  public override void Initialize(InitializationContext context = default)
+  {
+    base.Initialize(context);
+    SecurityContext.EndInitialization(this);
+  }
 }

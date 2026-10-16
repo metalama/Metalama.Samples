@@ -1,3 +1,4 @@
+using System.Data.Common;
 using System.Runtime.CompilerServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -12,10 +13,14 @@ namespace Metalama.Samples.Authorization.Demo.Data;
 /// <para>A changed or deleted entity is invalidated: its owner or its parent may have changed. A change of the role
 /// assignments invalidates all the decisions, because the roles of an object apply to all its descendants. Role
 /// assignments change rarely, so this costs little.</para>
-/// <para>The invalidation runs after the save, when the new data is visible to the other requests.</para>
+/// <para>The invalidation runs when the new data is visible to the other requests: after the save, or, when the save
+/// runs in an explicit transaction, after the commit of the transaction. A rolled-back transaction invalidates
+/// nothing.</para>
 /// </remarks>
-public sealed class PermissionCacheInvalidationInterceptor( CachingAuthorizationPolicy cache ) : SaveChangesInterceptor
+public sealed class PermissionCacheInvalidationInterceptor : SaveChangesInterceptor, IDbTransactionInterceptor
 {
+    public static PermissionCacheInvalidationInterceptor Instance { get; } = new();
+
     private readonly ConditionalWeakTable<DbContext, PendingInvalidation> _pending = new();
 
     public override InterceptionResult<int> SavingChanges( DbContextEventData eventData, InterceptionResult<int> result )
@@ -37,29 +42,49 @@ public sealed class PermissionCacheInvalidationInterceptor( CachingAuthorization
 
     public override int SavedChanges( SaveChangesCompletedEventData eventData, int result )
     {
-        this.Invalidate( eventData.Context );
+        this.OnSaved( eventData.Context );
 
         return result;
     }
 
     public override ValueTask<int> SavedChangesAsync( SaveChangesCompletedEventData eventData, int result, CancellationToken cancellationToken = default )
     {
-        this.Invalidate( eventData.Context );
+        this.OnSaved( eventData.Context );
 
         return ValueTask.FromResult( result );
     }
 
+    // A failed save outside of a transaction changed nothing. In a transaction, the changes of the previous saves are
+    // still pending, and the end of the transaction decides.
     public override void SaveChangesFailed( DbContextErrorEventData eventData )
     {
-        if ( eventData.Context != null )
+        if ( eventData.Context is { Database.CurrentTransaction: null } context )
         {
-            this._pending.Remove( eventData.Context );
+            this._pending.Remove( context );
         }
     }
 
     public override Task SaveChangesFailedAsync( DbContextErrorEventData eventData, CancellationToken cancellationToken = default )
     {
         this.SaveChangesFailed( eventData );
+
+        return Task.CompletedTask;
+    }
+
+    void IDbTransactionInterceptor.TransactionCommitted( DbTransaction transaction, TransactionEndEventData eventData ) => this.Invalidate( eventData.Context );
+
+    Task IDbTransactionInterceptor.TransactionCommittedAsync( DbTransaction transaction, TransactionEndEventData eventData, CancellationToken cancellationToken )
+    {
+        this.Invalidate( eventData.Context );
+
+        return Task.CompletedTask;
+    }
+
+    void IDbTransactionInterceptor.TransactionRolledBack( DbTransaction transaction, TransactionEndEventData eventData ) => this.Discard( eventData.Context );
+
+    Task IDbTransactionInterceptor.TransactionRolledBackAsync( DbTransaction transaction, TransactionEndEventData eventData, CancellationToken cancellationToken )
+    {
+        this.Discard( eventData.Context );
 
         return Task.CompletedTask;
     }
@@ -74,11 +99,33 @@ public sealed class PermissionCacheInvalidationInterceptor( CachingAuthorization
         var tracker = context.ChangeTracker;
         tracker.DetectChanges();
 
-        var pending = new PendingInvalidation(
-            tracker.Entries<Entity>().Where( e => e.State is EntityState.Modified or EntityState.Deleted ).Select( e => e.Entity ).ToList(),
-            tracker.Entries<RoleAssignmentRecord>().Any( e => e.State is not EntityState.Unchanged ) );
+        var entities = tracker.Entries<Entity>().Where( e => e.State is EntityState.Modified or EntityState.Deleted ).Select( e => e.Entity );
+        var rolesChanged = tracker.Entries<RoleAssignmentRecord>().Any( e => e.State is not EntityState.Unchanged );
 
-        this._pending.AddOrUpdate( context, pending );
+        // The saves of a transaction add up until the transaction ends.
+        var pending = this._pending.GetValue( context, _ => new PendingInvalidation() );
+
+        lock ( pending )
+        {
+            pending.Entities.AddRange( entities );
+            pending.RolesChanged |= rolesChanged;
+        }
+    }
+
+    private void OnSaved( DbContext? context )
+    {
+        if ( context is { Database.CurrentTransaction: null } )
+        {
+            this.Invalidate( context );
+        }
+    }
+
+    private void Discard( DbContext? context )
+    {
+        if ( context != null )
+        {
+            this._pending.Remove( context );
+        }
     }
 
     private void Invalidate( DbContext? context )
@@ -89,6 +136,8 @@ public sealed class PermissionCacheInvalidationInterceptor( CachingAuthorization
         }
 
         this._pending.Remove( context );
+
+        var cache = ((InvoicingDbContext) context).CachingPolicy;
 
         if ( pending.RolesChanged )
         {
@@ -103,5 +152,10 @@ public sealed class PermissionCacheInvalidationInterceptor( CachingAuthorization
         }
     }
 
-    private sealed record PendingInvalidation( List<Entity> Entities, bool RolesChanged );
+    private sealed class PendingInvalidation
+    {
+        public List<Entity> Entities { get; } = [];
+
+        public bool RolesChanged { get; set; }
+    }
 }

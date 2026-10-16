@@ -1,4 +1,5 @@
 using Metalama.Extensions.Validation;
+using Metalama.Framework.Advising;
 using Metalama.Framework.Aspects;
 using Metalama.Framework.Code;
 using Metalama.Framework.Diagnostics;
@@ -26,9 +27,11 @@ namespace Metalama.Samples.Authorization;
 /// <remarks>
 /// <para>The aspect is applied to the <see cref="ISecurable"/> interface and inherited by every class that implements
 /// it, and by their derived classes. It can also be applied directly to a class.</para>
-/// </remarks>
-/// <remarks>
-/// <para>The aspect secures by default: every public member, and every explicit interface implementation, gets a check.
+/// <para>The caller of a constructor has unlimited rights on the new object while it is initialized: the aspect
+/// starts the initialization before the code of the constructors, and ends it after the object initializer (see
+/// <see cref="SecurityContext.BeginInitialization"/>).</para>
+/// <para>The aspect secures by default: every field and property, every public method, and every explicit interface
+/// implementation, gets a check.
 /// A member is excluded only explicitly, with <c>[AuthorizationOptions( IsDefaultSecuringEnabled = false )]</c>.
 /// After all aspects have been applied, a validator reports a warning for every exposed member that still has no
 /// check and was not excluded explicitly, for instance a static member, an indexer or an event, which the aspects
@@ -67,6 +70,11 @@ public sealed class SecurableTypeAttribute : TypeAspect
 
     public override void BuildAspect( IAspectBuilder<INamedType> builder )
     {
+        // The object is being initialized from the first constructor that runs until the end of the object
+        // initializer. The call sites of the constructors call Initialize after the object initializer.
+        builder.AddInitializer( nameof(this.BeginInitialization), InitializerKind.BeforeInstanceConstructor );
+        builder.AddInitializer( nameof(this.EndInitialization), InitializerKind.AfterObjectInitializer );
+
         builder.Outbound
             .SelectMany(
                 type => type.FieldsAndProperties.Where(
@@ -95,7 +103,7 @@ public sealed class SecurableTypeAttribute : TypeAspect
     // Determines whether a member must have a check, unless it is excluded explicitly.
     private static bool IsExposed( IMember member, AuthorizationOptions options )
     {
-        if ( member.IsImplicitlyDeclared || options.IsDefaultSecuringEnabled == false )
+        if ( member.IsImplicitlyDeclared || options.IsDefaultSecuringEnabled == false || IsInitializationMethod( member ) )
         {
             return false;
         }
@@ -121,6 +129,12 @@ public sealed class SecurableTypeAttribute : TypeAspect
             _ => options.SecureNonPublicMembers == true
         };
     }
+
+    // The methods that Metalama introduces for the initializers, such as the Initialize method that the call sites of
+    // the constructors call. They end the initialization of the object, so a check would fail for every caller who
+    // cannot write the object.
+    private static bool IsInitializationMethod( IMember member )
+        => member is IMethod { Origin.Kind: DeclarationOriginKind.Aspect, Name: "Initialize" or "OnConstructed" };
 
     private static bool IsValidated( IMember member )
         => member switch
@@ -178,6 +192,12 @@ public sealed class SecurableTypeAttribute : TypeAspect
         => fieldOrProperty.Enhancements().HasAspect<RequiresPermissionAttribute>()
            || fieldOrProperty is IProperty { OriginalField: { } field } && field.Enhancements().HasAspect<RequiresPermissionAttribute>()
            || fieldOrProperty is IField { OverridingProperty: { } property } && property.Enhancements().HasAspect<RequiresPermissionAttribute>();
+
+    [Template]
+    private void BeginInitialization() => SecurityContext.BeginInitialization( meta.This );
+
+    [Template]
+    private void EndInitialization() => SecurityContext.EndInitialization( meta.This );
 
     // Explicit interface implementations have their own method kind; accessors, operators and finalizers are excluded.
     private static bool IsOrdinaryMethod( IMethod method )

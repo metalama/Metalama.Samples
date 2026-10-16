@@ -1,5 +1,6 @@
+using Metalama.Framework.RunTime.Initialization;
 namespace Metalama.Samples.Authorization.Tests.GrantsPermissions;
-public class Folder : ISecurable
+public class Folder : ISecurable, IInitializable
 {
   private string? _owner;
   [RequiresPermission("ReadSensitive")]
@@ -16,8 +17,16 @@ public class Folder : ISecurable
       _owner = value;
     }
   }
+  public Folder()
+  {
+    SecurityContext.BeginInitialization(this);
+  }
+  public virtual void Initialize(InitializationContext context = default)
+  {
+    SecurityContext.EndInitialization(this);
+  }
 }
-public class Report : ISecurable
+public class Report : ISecurable, IInitializable
 {
   private string? _body;
   [RequiresPermission("Read", "Write")]
@@ -105,6 +114,14 @@ public class Report : ISecurable
       return this.Body?.Split(' ').Length ?? 0;
     }
   }
+  public Report()
+  {
+    SecurityContext.BeginInitialization(this);
+  }
+  public virtual void Initialize(InitializationContext context = default)
+  {
+    SecurityContext.EndInitialization(this);
+  }
 }
 public class WeightedReport : Report
 {
@@ -119,40 +136,18 @@ public class WeightedReport : Report
       }
     }
   }
-}
-// A constructor grants permissions on the new object. It needs no check, because no caller can access the object
-// before the constructor returns. The grant starts after the call to the other constructor.
-public class Draft : ISecurable
-{
-  public Draft() : this("")
+  public WeightedReport()
   {
+    SecurityContext.BeginInitialization(this);
   }
-  [GrantsPermissions("Write")]
-  public Draft(string body)
+  public override void Initialize(InitializationContext context = default)
   {
-    using (SecurityContext.Grant(this, new string[] { "Write" }))
-    {
-      this.Body = body;
-    }
-  }
-  private string? _body;
-  [RequiresPermission("Read", "Write")]
-  public string? Body
-  {
-    get
-    {
-      AccessGuard.Demand(this, "Read", "Draft.Body", AccessKind.Read);
-      return _body;
-    }
-    set
-    {
-      AccessGuard.Demand(this, "Write", "Draft.Body", AccessKind.Write);
-      _body = value;
-    }
+    base.Initialize(context);
+    SecurityContext.EndInitialization(this);
   }
 }
 // The check can also come from the default securing of SecurableType.
-public class Summary : ISecurable
+public class Summary : ISecurable, IInitializable
 {
   private string? _text;
   public string? Text
@@ -179,5 +174,13 @@ public class Summary : ISecurable
         return this.Text?.Length ?? 0;
       }
     }
+  }
+  public Summary()
+  {
+    SecurityContext.BeginInitialization(this);
+  }
+  public virtual void Initialize(InitializationContext context = default)
+  {
+    SecurityContext.EndInitialization(this);
   }
 }

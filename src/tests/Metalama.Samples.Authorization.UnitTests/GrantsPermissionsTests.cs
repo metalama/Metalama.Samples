@@ -137,22 +137,6 @@ public class GrantsPermissionsTests
     }
 
     [Fact]
-    public void Constructor_ThatGrantsWrite_CanSetThePropertyOfTheNewObject()
-    {
-        using ( SignIn( this._summarizerOnly ) )
-        {
-            // Without the grant, setting the property of the new object is denied.
-            Assert.Throws<AccessDeniedException>( () => new Report { Body = "Draft" } );
-
-            var report = new Report( "Draft" );
-
-            // The grant ends when the constructor returns.
-            Assert.Throws<AccessDeniedException>( () => report.Body = "Changed" );
-            Assert.Throws<AccessDeniedException>( () => this._report.Body = "Changed" );
-        }
-    }
-
-    [Fact]
     public void Method_ThatGrantsReadAndWrite_CanChangeTheProperty()
     {
         using ( SignIn( this._publisherOnly ) )

@@ -24,9 +24,7 @@ public static class ServiceCollectionExtensions
                 .UseSqlite(
                     provider.GetRequiredService<InMemoryDatabase>().ConnectionString,
                     sqlite => sqlite.UseQuerySplittingBehavior( QuerySplittingBehavior.SplitQuery ) )
-                .AddInterceptors(
-                    SystemScopeMaterializationInterceptor.Instance,
-                    provider.GetRequiredService<PermissionCacheInvalidationInterceptor>() ) );
+                .AddInterceptors( SystemScopeMaterializationInterceptor.Instance, PermissionCacheInvalidationInterceptor.Instance ) );
 
         // Security infrastructure. The policy loads its rules from the database, see DemoData. Its decisions are
         // cached for all requests, behind the cache of each execution context, and invalidated after each change of
@@ -51,7 +49,6 @@ public static class ServiceCollectionExtensions
             } );
 
         services.AddSingleton<IAuthorizationPolicy>( provider => provider.GetRequiredService<CachingAuthorizationPolicy>() );
-        services.AddSingleton<PermissionCacheInvalidationInterceptor>();
         services.AddSingleton<IAccessAuditor, LoggingAccessAuditor>();
         services.AddSingleton<RequestRunner>();
 

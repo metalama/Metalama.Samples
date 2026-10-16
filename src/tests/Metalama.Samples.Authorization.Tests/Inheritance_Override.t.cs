@@ -1,5 +1,6 @@
+using Metalama.Framework.RunTime.Initialization;
 namespace Metalama.Samples.Authorization.Tests.Inheritance_Override;
-public class Document : ISecurable
+public class Document : ISecurable, IInitializable
 {
   [RequiresPermission("Approve")]
   public virtual void Approve()
@@ -20,6 +21,14 @@ public class Document : ISecurable
       AccessGuard.Demand(this, "Write", "Document.Title", AccessKind.Write);
       _title = value;
     }
+  }
+  public Document()
+  {
+    SecurityContext.BeginInitialization(this);
+  }
+  public virtual void Initialize(InitializationContext context = default)
+  {
+    SecurityContext.EndInitialization(this);
   }
 }
 // The aspect is inherited: the overrides are checked although they have no attribute
@@ -43,5 +52,14 @@ public class Contract : Document
       AccessGuard.Demand(this, "Write", "Contract.Title", AccessKind.Write);
       _title = value;
     }
+  }
+  public Contract()
+  {
+    SecurityContext.BeginInitialization(this);
+  }
+  public override void Initialize(InitializationContext context = default)
+  {
+    base.Initialize(context);
+    SecurityContext.EndInitialization(this);
   }
 }

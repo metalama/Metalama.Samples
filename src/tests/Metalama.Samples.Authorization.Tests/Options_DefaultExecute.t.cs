@@ -1,8 +1,9 @@
+using Metalama.Framework.RunTime.Initialization;
 namespace Metalama.Samples.Authorization.Tests.Options_DefaultExecute;
 [AuthorizationOptions(DefaultExecutePermission = "Edit")]
-public class Document : ISecurable
+public class Document : ISecurable, IInitializable
 {
-  private readonly IList<string> _lines1 = new SecurableList<string>();
+  private readonly IList<string> _lines1 = new SecurableList<string>().WithInitialize();
   private IList<string> _lines
   {
     get
@@ -29,4 +30,12 @@ public class Document : ISecurable
   }
   // Overrides of object methods are never secured by default.
   public override string ToString() => string.Join(", ", this._lines);
+  public Document()
+  {
+    SecurityContext.BeginInitialization(this);
+  }
+  public virtual void Initialize(InitializationContext context = default)
+  {
+    SecurityContext.EndInitialization(this);
+  }
 }

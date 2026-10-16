@@ -1,6 +1,7 @@
+using Metalama.Framework.RunTime.Initialization;
 namespace Metalama.Samples.Authorization.Tests.Options_NonPublic;
 [AuthorizationOptions(SecureNonPublicMembers = true)]
-public class Document : ISecurable
+public class Document : ISecurable, IInitializable
 {
   private string? _internalNotes;
   internal string? InternalNotes
@@ -64,4 +65,12 @@ public class Document : ISecurable
     AccessGuard.Demand(this, "Write", "Document.Restore", AccessKind.Execute);
   }
   private void Clear() => this.PrivateNotes = null;
+  public Document()
+  {
+    SecurityContext.BeginInitialization(this);
+  }
+  public virtual void Initialize(InitializationContext context = default)
+  {
+    SecurityContext.EndInitialization(this);
+  }
 }

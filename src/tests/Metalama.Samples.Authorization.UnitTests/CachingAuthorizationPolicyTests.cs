@@ -20,6 +20,7 @@ public sealed class CachingAuthorizationPolicyTests : IDisposable
     private readonly Folder _parent;
     private readonly Folder _folder;
     private readonly Folder _unsavedFolder;
+    private readonly Folder _otherFolder;
     private CachingAuthorizationPolicy? _policyUnderTest;
 
     public CachingAuthorizationPolicyTests()
@@ -38,8 +39,19 @@ public sealed class CachingAuthorizationPolicyTests : IDisposable
             this._parent = new Folder { Title = "Parent" };
             this._folder = new Folder { Parent = this._parent, Title = "Child" };
             this._unsavedFolder = new Folder { Title = "Unsaved" };
+            this._otherFolder = new Folder { Title = "Other" };
             this._parent.AssignRole( this._user, _reader );
         }
+
+        this.Load();
+    }
+
+    // Records the load of the folders, like a request that loads them from the database.
+    private void Load()
+    {
+        this._policy.RecordLoad( this._parent );
+        this._policy.RecordLoad( this._folder );
+        this._policy.RecordLoad( this._otherFolder );
     }
 
     public void Dispose()
@@ -53,6 +65,14 @@ public sealed class CachingAuthorizationPolicyTests : IDisposable
         for ( var parent = (securable as IRoleBasedSecurable)?.SecurityParent; parent != null; parent = parent.SecurityParent )
         {
             yield return parent;
+        }
+    }
+
+    private void ReadTitleOf( Folder folder )
+    {
+        using ( SecurityContext.Use( new UserSecurityContext( this._user, this._policy ) ) )
+        {
+            _ = folder.Title;
         }
     }
 
@@ -89,6 +109,40 @@ public sealed class CachingAuthorizationPolicyTests : IDisposable
     }
 
     [Fact]
+    public void ObjectLoadedBeforeAnInvalidation_IsNotCached()
+    {
+        // Another request saves a change of another object. The folder was loaded before, so its data may be out of
+        // date, and the decisions made from it are not shared with the other requests.
+        this._policy.Invalidate( this._otherFolder );
+
+        this.ReadTitle( this._folder );
+        this.ReadTitle( this._folder );
+
+        Assert.Equal( 2, this._inner.Evaluations );
+
+        // A request that loads the folder again makes decisions that can be shared.
+        this.Load();
+        this.ReadTitle( this._folder );
+        this.ReadTitle( this._folder );
+
+        Assert.Equal( 3, this._inner.Evaluations );
+    }
+
+    [Fact]
+    public void ObjectWhoseLoadIsNotRecorded_IsNotCached()
+    {
+        using ( SecurityContext.RunAsSystem() )
+        {
+            var folder = new Folder { Parent = this._parent };
+
+            this.ReadTitleOf( folder );
+            this.ReadTitleOf( folder );
+        }
+
+        Assert.Equal( 2, this._inner.Evaluations );
+    }
+
+    [Fact]
     public void WithoutInvalidation_TheChangeIsNotSeen()
     {
         this.ReadTitle( this._folder );
@@ -112,6 +166,7 @@ public sealed class CachingAuthorizationPolicyTests : IDisposable
         }
 
         this._policy.Invalidate( this._parent );
+        this.Load();
 
         Assert.Throws<AccessDeniedException>( () => this.ReadTitle( this._folder ) );
     }
@@ -123,6 +178,7 @@ public sealed class CachingAuthorizationPolicyTests : IDisposable
         this.ReadTitle( this._folder );
 
         this._policy.Invalidate( this._folder );
+        this.Load();
 
         this.ReadTitle( this._parent );
         this.ReadTitle( this._folder );
@@ -137,6 +193,7 @@ public sealed class CachingAuthorizationPolicyTests : IDisposable
         this.ReadTitle( this._folder );
 
         this._policy.InvalidateAll();
+        this.Load();
 
         this.ReadTitle( this._parent );
         this.ReadTitle( this._folder );
@@ -154,6 +211,8 @@ public sealed class CachingAuthorizationPolicyTests : IDisposable
             GetParents );
 
         this._policyUnderTest = policy;
+        policy.RecordLoad( this._folder );
+        policy.RecordLoad( this._parent );
 
         using ( SecurityContext.RunAsSystem() )
         {

@@ -9,8 +9,11 @@ namespace Metalama.Samples.Authorization.UnitTests;
 public abstract class InMemoryRoleBasedSecurable : RoleBasedSecurable
 {
     private readonly List<RoleAssignment> _roleAssignments = [];
+    private ISubject? _owner;
 
-    public override ISubject? Owner { get; set; }
+    protected override ISubject? GetOwner() => this._owner;
+
+    protected override void SetOwner( ISubject? owner ) => this._owner = owner;
 
     protected override IEnumerable<RoleAssignment> GetRoleAssignments() => this._roleAssignments;
 

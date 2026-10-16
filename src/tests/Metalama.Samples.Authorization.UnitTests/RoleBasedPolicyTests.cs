@@ -238,6 +238,67 @@ public class RoleBasedPolicyTests
     }
 
     [Fact]
+    public void RevokingARoleFromOneself_IsDenied()
+    {
+        var policy = new RoleBasedAuthorizationPolicyBuilder().Allow<Folder>( ManageRoles, TestRoles.Editor ).Build();
+        var folder = this.CreateFolder( aliceRole: TestRoles.Editor );
+
+        using ( SecurityContext.RunAsSystem() )
+        {
+            folder.AssignRole( this._alice, TestRoles.Auditor );
+            folder.AssignRole( this._bob, TestRoles.Auditor );
+        }
+
+        using ( SecurityContext.Use( new UserSecurityContext( this._alice, policy ) ) )
+        {
+            // The revoked role could carry Deny rules.
+            var exception = Assert.Throws<AccessDeniedException>( () => folder.RevokeRole( this._alice, TestRoles.Auditor ) );
+
+            Assert.Contains( "cannot revoke a role from themself", exception.Message, StringComparison.Ordinal );
+
+            Assert.True( folder.RevokeRole( this._bob, TestRoles.Auditor ) );
+        }
+    }
+
+    [Fact]
+    public void MakingOneselfTheOwner_IsDenied()
+    {
+        var policy = new RoleBasedAuthorizationPolicyBuilder().Allow<Folder>( ChangeOwnership, TestRoles.Editor ).Build();
+        var folder = this.CreateFolder( aliceRole: TestRoles.Editor );
+
+        using ( SecurityContext.Use( new UserSecurityContext( this._alice, policy ) ) )
+        {
+            var exception = Assert.Throws<AccessDeniedException>( () => folder.Owner = this._alice );
+
+            Assert.Contains( "cannot make themself the owner", exception.Message, StringComparison.Ordinal );
+
+            // Giving the object to someone else is allowed.
+            folder.Owner = this._bob;
+        }
+    }
+
+    [Fact]
+    public void CreatorOfAnObject_CanMakeThemselfTheOwner()
+    {
+        var policy = new RoleBasedAuthorizationPolicyBuilder().Build();
+        Folder folder;
+
+        using ( SecurityContext.Use( new UserSecurityContext( this._alice, policy ) ) )
+        {
+            // The object is being initialized, so the creator has unlimited rights on it, and can own it.
+            folder = new Folder { Owner = this._alice };
+
+            // After the initialization, changing the owner requires ChangeOwnership.
+            Assert.Throws<AccessDeniedException>( () => folder.Owner = this._bob );
+        }
+
+        using ( SecurityContext.RunAsSystem() )
+        {
+            Assert.Equal( this._alice, folder.Owner );
+        }
+    }
+
+    [Fact]
     public void RuleOnAnInterface_IsRejected()
         => Assert.Throws<ArgumentException>( () => new RoleBasedAuthorizationPolicyBuilder().Allow<IFolder>( Read, Role.Everyone ) );
 

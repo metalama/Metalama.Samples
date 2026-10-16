@@ -1,10 +1,11 @@
+using Metalama.Framework.RunTime.Initialization;
 namespace Metalama.Samples.Authorization.Tests.ExplicitInterface;
 public interface IArchivable
 {
   void Archive();
   bool IsArchived { get; }
 }
-public class Document : IArchivable, ISecurable
+public class Document : IArchivable, ISecurable, IInitializable
 {
   private bool _isArchived1;
   private bool _isArchived
@@ -34,5 +35,13 @@ public class Document : IArchivable, ISecurable
       AccessGuard.Demand(this, "Read", "Document.IArchivable.IsArchived", AccessKind.Read);
       return this._isArchived;
     }
+  }
+  public Document()
+  {
+    SecurityContext.BeginInitialization(this);
+  }
+  public virtual void Initialize(InitializationContext context = default)
+  {
+    SecurityContext.EndInitialization(this);
   }
 }

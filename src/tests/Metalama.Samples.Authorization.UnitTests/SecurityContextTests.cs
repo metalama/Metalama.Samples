@@ -46,6 +46,26 @@ public class SecurityContextTests
     }
 
     [Fact]
+    public void Use_EndsTheSystemScope_UntilDisposed()
+    {
+        var folder = new Folder();
+        var context = new UserSecurityContext( new TestUser( "alice" ), _everyoneMayRead );
+
+        using ( SecurityContext.RunAsSystem() )
+        {
+            using ( SecurityContext.Use( context ) )
+            {
+                // Switching to a subject drops the privileges of the system scope.
+                Assert.False( SecurityContext.IsSystem );
+                Assert.Throws<AccessDeniedException>( () => folder.Title = "Inbox" );
+            }
+
+            Assert.True( SecurityContext.IsSystem );
+            folder.Title = "Inbox";
+        }
+    }
+
+    [Fact]
     public void Use_RestoresPreviousContext()
     {
         var outer = new UserSecurityContext( new TestUser( "outer" ), _everyoneMayRead );

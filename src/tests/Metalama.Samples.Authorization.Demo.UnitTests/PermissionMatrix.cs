@@ -83,7 +83,7 @@ public static class PermissionMatrix
         Op( "INV-8: Void a sales invoice", org => org.SalesInvoice.Void( "Duplicate" ), Ada ),
 
         // Ownership and transfers.
-        Op( "INV-9: Change the owner of a sales invoice", org => org.SalesInvoice.Owner = org.Mia, Mia ),
+        Op( "INV-9: Change the owner of a sales invoice", org => org.SalesInvoice.Owner = org.Vera, Mia ),
         Op( "INV-10: Move a sales invoice to Marketing", org => org.SalesInvoice.TransferTo( org.Marketing ), Mia ),
         Op( "INV-10: Move a sales invoice to Engineering", org => org.SalesInvoice.TransferTo( org.Engineering ) ),
         Op( "INV-11: Read the notes of a sales invoice", org => _ = org.SalesInvoice.Notes.Count, Sam, Mia, Ada, Otto, Grace ),

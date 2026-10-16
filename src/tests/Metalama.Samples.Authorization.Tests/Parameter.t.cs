@@ -1,5 +1,16 @@
+using Metalama.Framework.RunTime.Initialization;
 namespace Metalama.Samples.Authorization.Tests.Parameter;
-public class Folder : ISecurable;
+public class Folder : ISecurable, IInitializable
+{
+  public Folder()
+  {
+    SecurityContext.BeginInitialization(this);
+  }
+  public virtual void Initialize(InitializationContext context = default)
+  {
+    SecurityContext.EndInitialization(this);
+  }
+}
 public class Document
 {
   // Only the attributed parameter is checked. The permission is required on the argument, not on this.

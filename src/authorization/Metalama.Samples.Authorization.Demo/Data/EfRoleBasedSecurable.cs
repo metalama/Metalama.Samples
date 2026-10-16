@@ -12,18 +12,15 @@ namespace Metalama.Samples.Authorization.Demo.Data;
 /// </remarks>
 public abstract class EfRoleBasedSecurable : RoleBasedSecurable
 {
-    // The aspect of the base property is inherited, so this override requires Read and ChangeOwnership.
-    public override ISubject? Owner
-    {
-        get => this.OwnerUser;
-        set
-            => this.OwnerUser = value switch
-            {
-                null => null,
-                User user => user,
-                _ => throw new ArgumentException( $"The owner must be a {nameof(User)}.", nameof(value) )
-            };
-    }
+    protected override ISubject? GetOwner() => this.OwnerUser;
+
+    protected override void SetOwner( ISubject? owner )
+        => this.OwnerUser = owner switch
+        {
+            null => null,
+            User user => user,
+            _ => throw new ArgumentException( $"The owner must be a {nameof(User)}.", nameof(owner) )
+        };
 
     [AuthorizationOptions( IsDefaultSecuringEnabled = false )]
     protected User? OwnerUser { get; set; }

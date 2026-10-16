@@ -43,11 +43,16 @@ public sealed class Report : InMemoryRoleBasedSecurable
 
     public Report() { }
 
-    // A constructor that sets a secured property of the new report: it grants the permission on the new report only.
-    [GrantsPermissions( PermissionNames.Write )]
+    // A constructor that sets a secured property of the new report, which is being initialized.
     public Report( string body )
     {
         this.Body = body;
+    }
+
+    // A constructor that reads another report, which is not being initialized.
+    public Report( Report source )
+    {
+        this.Body = source.Body;
     }
 
     // A detail.

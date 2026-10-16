@@ -51,6 +51,18 @@ public class PolicyStorageTests : IAsyncLifetime
         }
     }
 
+    [Theory]
+    [InlineData( "Auditer", PermissionNames.Write )]
+    [InlineData( "Auditor", "Wirte" )]
+    public async Task DenyRuleWithAnUnknownName_MakesTheReloadFail( string role, string permission )
+    {
+        // Loaded without an error, a mistyped Deny rule would match no role or no check, and the auditors could write.
+        this._org.Db.PermissionRules.Add( new PermissionRuleRecord( PermissionRuleRecord.AnyType, permission, role, PermissionEffect.Deny ) );
+        await this._org.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<InvalidOperationException>( () => this.Policy.ReloadAsync( this._org.Db ) );
+    }
+
     [Fact]
     public async Task RuleOnAnUnknownClass_MakesTheReloadFail()
     {

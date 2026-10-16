@@ -1,3 +1,4 @@
+using Metalama.Framework.RunTime.Initialization;
 using Metalama.Samples.Authorization.RoleBased;
 namespace Metalama.Samples.Authorization.Demo.Finance;
 public sealed class Forecast : Entity
@@ -24,4 +25,13 @@ public sealed class Forecast : Entity
     this.Amount = amount;
   }
   protected override IRoleBasedSecurable? SecurityParent => null;
+  public Forecast()
+  {
+    SecurityContext.BeginInitialization(this);
+  }
+  public override void Initialize(InitializationContext context = default)
+  {
+    base.Initialize(context);
+    SecurityContext.EndInitialization(this);
+  }
 }

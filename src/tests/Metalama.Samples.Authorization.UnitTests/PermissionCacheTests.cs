@@ -17,6 +17,8 @@ public class PermissionCacheTests
         new RoleBasedAuthorizationPolicyBuilder()
             .Allow<Report>( Read, _reader )
             .Allow<Report>( "Summarize", _summarizer )
+            .Allow<Report>( Read, Role.Owner )
+            .Allow<Report>( ChangeOwnership, Role.Owner )
             .Build() );
 
     private readonly TestUser _readerUser = new( "reader" );
@@ -147,6 +149,27 @@ public class PermissionCacheTests
 
         using ( this.SignIn( this._readerUser ) )
         {
+            Assert.Throws<AccessDeniedException>( () => this._report.Body );
+        }
+    }
+
+    [Fact]
+    public void ChangeOfOwner_ClearsTheCacheOfTheExecutionContext()
+    {
+        var owner = new TestUser( "owner" );
+
+        using ( SecurityContext.RunAsSystem() )
+        {
+            this._report.Owner = owner;
+        }
+
+        using ( this.SignIn( owner ) )
+        {
+            _ = this._report.Body;
+
+            this._report.Owner = this._readerUser;
+
+            // The decision cached before the change is removed, so the former owner loses the access at once.
             Assert.Throws<AccessDeniedException>( () => this._report.Body );
         }
     }

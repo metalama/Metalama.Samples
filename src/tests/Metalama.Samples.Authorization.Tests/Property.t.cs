@@ -1,5 +1,6 @@
+using Metalama.Framework.RunTime.Initialization;
 namespace Metalama.Samples.Authorization.Tests.Property;
-public class Document : ISecurable
+public class Document : ISecurable, IInitializable
 {
   private decimal _amount;
   // Different permissions for reading and writing.
@@ -79,5 +80,13 @@ public class Document : ISecurable
       AccessGuard.Demand(this, "Write", "Document.DueDate", AccessKind.Write);
       _dueDate = value;
     }
+  }
+  public Document()
+  {
+    SecurityContext.BeginInitialization(this);
+  }
+  public virtual void Initialize(InitializationContext context = default)
+  {
+    SecurityContext.EndInitialization(this);
   }
 }

@@ -20,6 +20,14 @@ public sealed class DatabaseAuthorizationPolicy : IAuthorizationPolicy
             .Where( type => type.IsSubclassOf( typeof(Entity) ) )
             .ToDictionary( type => type.Name );
 
+    // The permissions that the code checks: the constants of PermissionNames and DemoPermissions.
+    private static readonly HashSet<string> _permissions =
+        new[] { typeof(PermissionNames), typeof(DemoPermissions) }
+            .SelectMany( type => type.GetFields() )
+            .Where( field => field.IsLiteral && field.FieldType == typeof(string) )
+            .Select( field => (string) field.GetRawConstantValue()! )
+            .ToHashSet();
+
     private volatile RoleBasedAuthorizationPolicy? _policy;
 
     /// <summary>
@@ -33,7 +41,8 @@ public sealed class DatabaseAuthorizationPolicy : IAuthorizationPolicy
     /// <summary>
     /// Loads the rules from the database and replaces the current policy.
     /// </summary>
-    /// <exception cref="InvalidOperationException">A rule names an unknown class.</exception>
+    /// <exception cref="InvalidOperationException">A rule names an unknown class, permission or role. The current
+    /// policy is not changed.</exception>
     public async Task ReloadAsync( InvoicingDbContext db, CancellationToken cancellationToken = default )
     {
         var rules = await db.PermissionRules.AsNoTracking().OrderBy( r => r.Id ).ToListAsync( cancellationToken );
@@ -41,14 +50,23 @@ public sealed class DatabaseAuthorizationPolicy : IAuthorizationPolicy
 
         foreach ( var rule in rules )
         {
-            builder.Add( GetObjectType( rule ), rule.Permission, DemoRoles.FromName( rule.Role ), rule.Effect );
+            builder.Add( GetObjectType( rule ), GetPermission( rule ), GetRole( rule ), rule.Effect );
         }
 
         this._policy = builder.Build();
         this.Reloaded?.Invoke();
     }
 
-    // A rule on an unknown class is a configuration error. Ignoring it could silently remove a Deny rule.
+    // A rule on an unknown class, permission or role is a configuration error. Loading it could silently remove a
+    // Deny rule: a mistyped name matches no check, or a role that nobody has.
+    private static Permission GetPermission( PermissionRuleRecord rule )
+        => _permissions.Contains( rule.Permission )
+            ? rule.Permission
+            : throw new InvalidOperationException( $"The rule '{rule}' names the unknown permission '{rule.Permission}'." );
+
+    private static Role GetRole( PermissionRuleRecord rule )
+        => DemoRoles.FromName( rule.Role ) ?? throw new InvalidOperationException( $"The rule '{rule}' names the unknown role '{rule.Role}'." );
+
     private static Type GetObjectType( PermissionRuleRecord rule )
         => rule.ObjectType == PermissionRuleRecord.AnyType
             ? typeof(object)

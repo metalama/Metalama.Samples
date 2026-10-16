@@ -8,17 +8,15 @@ using Metalama.Framework.Eligibility;
 namespace Metalama.Samples.Authorization;
 
 /// <summary>
-/// Aspect that grants permissions while a method, a property accessor or a constructor runs, after the permission
-/// check of the member has passed. On a method, a property or a constructor, the permissions are granted on the
-/// current instance (<c>this</c>). On a parameter, they are granted on the argument. Use it for an aggregate that the
-/// subject may see although it is computed from details that the subject may not see, for instance a total computed
-/// from secured lines, and for a constructor that initializes secured members of the new object.
+/// Aspect that grants permissions while a method or a property accessor runs, after the permission check of the
+/// member has passed. On a method or a property, the permissions are granted on the current instance (<c>this</c>).
+/// On a parameter, they are granted on the argument. Use it for an aggregate that the subject may see although it is
+/// computed from details that the subject may not see, for instance a total computed from secured lines.
 /// </summary>
 /// <remarks>
 /// <para>The member or the parameter must have a permission check (<see cref="RequiresPermissionAttribute"/>, explicit
 /// or added by default): otherwise any caller would get the granted permissions. A validator reports an error when it
-/// has none. A constructor is the exception: it grants permissions on an object that it creates, and that no caller
-/// can access before the constructor returns.</para>
+/// has none.</para>
 /// <para>The grant runs inside the check: the aspect order makes <see cref="RequiresPermissionAttribute"/> the outer
 /// aspect, so the grant cannot satisfy the check of its own member. The permission checks of the parameters also run
 /// before the grant.</para>
@@ -29,8 +27,8 @@ namespace Metalama.Samples.Authorization;
 /// permissions grants them too, so that a derived class keeps the behavior of the base member.</para>
 /// </remarks>
 [Inheritable]
-[AttributeUsage( AttributeTargets.Method | AttributeTargets.Property | AttributeTargets.Constructor | AttributeTargets.Parameter )]
-public sealed class GrantsPermissionsAttribute : Aspect, IAspect<IMethod>, IAspect<IProperty>, IAspect<IConstructor>, IAspect<IParameter>
+[AttributeUsage( AttributeTargets.Method | AttributeTargets.Property | AttributeTargets.Parameter )]
+public sealed class GrantsPermissionsAttribute : Aspect, IAspect<IMethod>, IAspect<IProperty>, IAspect<IParameter>
 {
     private static readonly DiagnosticDefinition<IDeclaration> _uncheckedMemberError = new(
         "AUTH004",
@@ -71,12 +69,6 @@ public sealed class GrantsPermissionsAttribute : Aspect, IAspect<IMethod>, IAspe
         builder.MustSatisfy( property => property.IsAutoPropertyOrField != true, property => $"{property} must not be an automatic property" );
     }
 
-    public void BuildEligibility( IEligibilityBuilder<IConstructor> builder )
-    {
-        builder.MustNotBeStatic();
-        builder.DeclaringType().MustBeConvertibleTo( typeof(ISecurable) );
-    }
-
     public void BuildEligibility( IEligibilityBuilder<IParameter> builder )
     {
         builder.MustNotBeReturnParameter();
@@ -109,11 +101,6 @@ public sealed class GrantsPermissionsAttribute : Aspect, IAspect<IMethod>, IAspe
 
         ValidateLater( builder );
     }
-
-    // The constructor creates the object, so no check is required before the grant. The grant starts after the call to
-    // the base constructor or to another constructor of the class, and ends before the object is returned to the caller.
-    public void BuildAspect( IAspectBuilder<IConstructor> builder )
-        => builder.Override( nameof(this.OverrideConstructor), args: new { permissions = this._permissions } );
 
     public void BuildAspect( IAspectBuilder<IParameter> builder )
     {
@@ -152,15 +139,6 @@ public sealed class GrantsPermissionsAttribute : Aspect, IAspect<IMethod>, IAspe
         using ( SecurityContext.Grant( meta.This, meta.RunTime( permissions ) ) )
         {
             return meta.Proceed();
-        }
-    }
-
-    [Template]
-    private void OverrideConstructor( [CompileTime] string[] permissions )
-    {
-        using ( SecurityContext.Grant( meta.This, meta.RunTime( permissions ) ) )
-        {
-            meta.Proceed();
         }
     }
 

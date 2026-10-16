@@ -27,19 +27,24 @@ public readonly struct SecurityScope : IDisposable
         this._previousIsSystem = previousIsSystem;
     }
 
+    // Used by SecurityContext.Use, which also ends a system scope.
+    internal SecurityScope( SecurityContext.ExecutionContext? previousContext, bool previousIsSystem )
+    {
+        this._kind = Kind.ContextAndSystem;
+        this._previousContext = previousContext;
+        this._previousIsSystem = previousIsSystem;
+    }
+
     public void Dispose()
     {
-        switch ( this._kind )
+        if ( this._kind is Kind.Context or Kind.ContextAndSystem )
         {
-            case Kind.Context:
-                SecurityContext.Restore( this._previousContext );
+            SecurityContext.Restore( this._previousContext );
+        }
 
-                break;
-
-            case Kind.System:
-                SecurityContext.RestoreIsSystem( this._previousIsSystem );
-
-                break;
+        if ( this._kind is Kind.System or Kind.ContextAndSystem )
+        {
+            SecurityContext.RestoreIsSystem( this._previousIsSystem );
         }
     }
 
@@ -47,6 +52,7 @@ public readonly struct SecurityScope : IDisposable
     {
         None,
         Context,
-        System
+        System,
+        ContextAndSystem
     }
 }

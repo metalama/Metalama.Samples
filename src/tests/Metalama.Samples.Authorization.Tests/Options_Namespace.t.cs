@@ -1,5 +1,6 @@
 using Metalama.Framework.Fabrics;
 using Metalama.Framework.Options;
+using Metalama.Framework.RunTime.Initialization;
 namespace Metalama.Samples.Authorization.Tests.Options_Namespace
 {
 #pragma warning disable CS0067, CS8618, CS0162, CS0169, CS0414, CA1822, CA1823, IDE0051, IDE0052
@@ -8,7 +9,7 @@ namespace Metalama.Samples.Authorization.Tests.Options_Namespace
     public override void AmendProject(IProjectAmender amender) => throw new System.NotSupportedException("Compile-time-only code cannot be called at run-time.");
   }
 #pragma warning restore CS0067, CS8618, CS0162, CS0169, CS0414, CA1822, CA1823, IDE0051, IDE0052
-  public abstract class Entity : ISecurable
+  public abstract class Entity : ISecurable, IInitializable
   {
     private string? _name;
     public string? Name
@@ -23,6 +24,14 @@ namespace Metalama.Samples.Authorization.Tests.Options_Namespace
         AccessGuard.Demand(this, "Edit", "Entity.Name", AccessKind.Write);
         _name = value;
       }
+    }
+    protected Entity()
+    {
+      SecurityContext.BeginInitialization(this);
+    }
+    public virtual void Initialize(InitializationContext context = default)
+    {
+      SecurityContext.EndInitialization(this);
     }
   }
   namespace Finance
@@ -50,6 +59,15 @@ namespace Metalama.Samples.Authorization.Tests.Options_Namespace
           AccessGuard.Demand(this, "Edit", "Budget.Amount", AccessKind.Write);
           _amount = value;
         }
+      }
+      public Budget()
+      {
+        SecurityContext.BeginInitialization(this);
+      }
+      public override void Initialize(InitializationContext context = default)
+      {
+        base.Initialize(context);
+        SecurityContext.EndInitialization(this);
       }
     }
   }

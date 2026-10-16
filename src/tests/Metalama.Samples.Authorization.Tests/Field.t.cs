@@ -1,5 +1,6 @@
+using Metalama.Framework.RunTime.Initialization;
 namespace Metalama.Samples.Authorization.Tests.Field;
-public class Document : ISecurable
+public class Document : ISecurable, IInitializable
 {
   // Metalama turns the field into a property to intercept its accesses.
   private string? _notes;
@@ -16,5 +17,13 @@ public class Document : ISecurable
       AccessGuard.Demand(this, "Write", "Document.Notes", AccessKind.Write);
       _notes = value;
     }
+  }
+  public Document()
+  {
+    SecurityContext.BeginInitialization(this);
+  }
+  public virtual void Initialize(InitializationContext context = default)
+  {
+    SecurityContext.EndInitialization(this);
   }
 }

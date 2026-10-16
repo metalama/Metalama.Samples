@@ -1,5 +1,6 @@
+using Metalama.Framework.RunTime.Initialization;
 namespace Metalama.Samples.Authorization.Tests.Method;
-public class Document : ISecurable
+public class Document : ISecurable, IInitializable
 {
   [RequiresPermission("Approve")]
   public void Approve()
@@ -11,5 +12,13 @@ public class Document : ISecurable
   {
     AccessGuard.Demand(this, "Read", "Document.Render", AccessKind.Execute);
     return $"Document as {format}";
+  }
+  public Document()
+  {
+    SecurityContext.BeginInitialization(this);
+  }
+  public virtual void Initialize(InitializationContext context = default)
+  {
+    SecurityContext.EndInitialization(this);
   }
 }
