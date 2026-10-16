@@ -1,4 +1,4 @@
-using System.Runtime.CompilerServices;
+using System.Reflection;
 using Xunit;
 
 namespace Metalama.Samples.LegacyTesting3.UnitTests;
@@ -8,11 +8,16 @@ namespace Metalama.Samples.LegacyTesting3.UnitTests;
 // the .received.txt file.
 internal static class Snapshot
 {
-    public static void Verify( string actual, string name, [CallerFilePath] string sourceFilePath = "" )
+    // The directory of the project is stored in the assembly by the project file. [CallerFilePath] cannot be used
+    // because a deterministic build maps the source paths to '/_/'.
+    private static readonly string _directory = Path.Combine(
+        typeof(Snapshot).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>().Single( a => a.Key == "ProjectDirectory" ).Value!,
+        "Snapshots" );
+
+    public static void Verify( string actual, string name )
     {
-        var directory = Path.Combine( Path.GetDirectoryName( sourceFilePath )!, "Snapshots" );
-        var verifiedPath = Path.Combine( directory, $"{name}.verified.txt" );
-        var receivedPath = Path.Combine( directory, $"{name}.received.txt" );
+        var verifiedPath = Path.Combine( _directory, $"{name}.verified.txt" );
+        var receivedPath = Path.Combine( _directory, $"{name}.received.txt" );
 
         // Line endings depend on the platform and on the Git settings, so they are not compared.
         actual = NormalizeLineEndings( actual );
