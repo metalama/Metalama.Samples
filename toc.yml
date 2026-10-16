@@ -170,6 +170,15 @@ items:
               topicUid: sample-legacy-testing-2
             - name: Step 3. Replaying interactions in characterization tests
               topicUid: sample-legacy-testing-3
+        - name: Replacing an implementation
+          topicUid: sample-legacy-replacement
+          items:
+            - name: Step 1. Finding which calls are actually used
+              topicUid: sample-legacy-replacement-1
+            - name: Step 2. Comparing the new implementation with the old one
+              topicUid: sample-legacy-replacement-2
+            - name: Step 3. Switching one module at a time
+              topicUid: sample-legacy-replacement-3
 
     - name: Metrics
       topicUid: sample-metrics
