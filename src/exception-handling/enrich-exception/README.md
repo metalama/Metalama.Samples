@@ -1,5 +1,6 @@
 ---
 uid: sample-enrich-exception
+browse-source: .
 level: 200
 summary: "This document demonstrates how to enrich exceptions with parameter values, enhancing call stacks for better debugging and context."
 keywords: "exception handling, call stacks, debugging, parameter values, .NET, enrich exceptions, context information, exception handler, crash report"

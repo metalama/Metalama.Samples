@@ -1,5 +1,6 @@
 ---
 uid: sample-tostring-1
+browse-source: .
 summary: "This document explains how to implement a `[ToString]` aspect in Metalama to generate a `ToString` method based on public fields and properties."
 keywords: "ToString method, generate code"
 created-date: 2024-09-05

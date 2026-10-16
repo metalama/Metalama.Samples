@@ -1,5 +1,6 @@
 ---
 uid: sample-cache-1
+browse-source: .
 level: 250
 summary: "This document explains the basics of implementing caching using an aspect-oriented approach, comparing non-cached and cached code, and detailing the infrastructure and aspect code."
 keywords: "caching, cache key, MemoryCache"

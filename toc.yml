@@ -44,6 +44,8 @@ items:
             topicUid: sample-retry-4
           - name: Step 5. Using Polly
             topicUid: sample-retry-5          
+          - name: Step 6. Retrying calls to code you don't own
+            topicUid: sample-retry-6
       - name: Enrich with parameter values
         topicUid: sample-enrich-exception
       - name: Report and swallow
@@ -159,6 +161,35 @@ items:
               topicUid: sample-call-telemetry-3
         - name: Generating interception proxies
           topicUid: sample-proxy
+        - name: Getting legacy code under test
+          topicUid: sample-legacy-testing
+          items:
+            - name: Step 1. Replacing hard-wired dependencies with fakes
+              topicUid: sample-legacy-testing-1
+            - name: Step 2. Recording real interactions
+              topicUid: sample-legacy-testing-2
+            - name: Step 3. Replaying interactions in characterization tests
+              topicUid: sample-legacy-testing-3
+        - name: Replacing an implementation
+          topicUid: sample-legacy-replacement
+          items:
+            - name: Step 1. Finding which calls are actually used
+              topicUid: sample-legacy-replacement-1
+            - name: Step 2. Comparing the new implementation with the old one
+              topicUid: sample-legacy-replacement-2
+            - name: Step 3. Switching one module at a time
+              topicUid: sample-legacy-replacement-3
+        - name: Universal interceptor
+          topicUid: sample-universal-interceptor
+          items:
+            - name: Step 1. Routing synchronous calls to one object
+              topicUid: sample-universal-interceptor-1
+            - name: Step 2. Handling async methods
+              topicUid: sample-universal-interceptor-2
+            - name: Step 3. Handling ref and out parameters
+              topicUid: sample-universal-interceptor-3
+            - name: Step 4. Putting it all together
+              topicUid: sample-universal-interceptor-4
     - name: Authorization
       topicUid: sample-authorization
       items:

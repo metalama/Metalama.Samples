@@ -1,5 +1,6 @@
 ---
 uid: sample-enum-viewmodel
+browse-source: .
 level: 200
 summary: "This document describes creating an aspect in Metalama to generate view-model classes for `enum` types, producing `IsFoo` properties for each enum member."
 keywords: "enum view-model, aspect, generate view-model, enum member"

@@ -1,5 +1,6 @@
 ---
 uid: sample-clone-3
+browse-source: .
 summary: "The document explains enhancing a `Cloneable` aspect to allow custom user logic for cloning external types and collections by implementing a `CloneMembers` method."
 keywords: "Cloneable aspect"
 created-date: 2023-04-21

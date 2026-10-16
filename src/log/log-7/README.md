@@ -1,5 +1,6 @@
 ---
 uid: sample-log-7
+browse-source: .
 level: 300
 summary: "This document explains how to prevent logging sensitive data by filtering parameters and using custom attributes, with examples and implementation details."
 keywords: "sensitive data, logging sensitive data, prevent logging, custom attributes, .NET, parameter filtering"

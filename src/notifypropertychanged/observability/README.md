@@ -1,5 +1,6 @@
 ---
 uid: sample-notifypropertychanged-observability
+browse-source: .
 summary: "This example applies the ready-made Observable aspect of the Metalama.Patterns.Observability package to a type that has a computed property, and shows the notification code that the aspect generates."
 keywords: "INotifyPropertyChanged, Observable, Metalama.Patterns.Observability, computed property, dependent property, OnPropertyChanged, MVVM, data binding"
 created-date: 2026-10-15

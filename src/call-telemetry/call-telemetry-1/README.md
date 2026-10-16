@@ -1,5 +1,10 @@
 ---
 uid: sample-call-telemetry-1
+browse-source:
+  - path: .
+    children:
+      - title: Tests
+        path: ../../tests/Metalama.Samples.CallTelemetry1.Tests
 level: 300
 summary: "This example audits every call to File.Delete and Process.Start in a project, by redirecting the calls to static methods that receive the caller through caller information attributes."
 keywords: "interceptors, audit, sensitive API, File.Delete, Process.Start, RedirectToExistingMethod, ForEachSite, ExcludeInterceptors, CallerMemberName, CallerFilePath, CallerLineNumber, project fabric"

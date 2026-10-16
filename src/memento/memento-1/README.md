@@ -1,5 +1,10 @@
 ---
 uid: sample-memento-1
+browse-source:
+  - path: .
+    children:
+      - title: Unit tests
+        path: ../../tests/Metalama.Samples.Memento1.UnitTests
 level: 300
 summary: "This document explains the implementation of the Memento pattern in a WPF application, focusing on creating and managing mementos without type inheritance."
 keywords: "Memento pattern, SaveToMemento method, RestoreMemento method, INotifyPropertyChanged interface, IMementoable interface"

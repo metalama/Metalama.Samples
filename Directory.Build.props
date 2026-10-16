@@ -25,6 +25,9 @@
         <!-- HTML files are consumed by Metalama.Documentation. -->
         <MetalamaWriteHtml>True</MetalamaWriteHtml>
 
+        <!-- The HTML files identify the symbol of each identifier, so that HelpBrowser makes the code navigable. -->
+        <MetalamaWriteHtmlSymbols>True</MetalamaWriteHtmlSymbols>
+
         <!-- The interceptor examples use C# 14 extension members such as meta.Interception. -->
         <LangVersion>14.0</LangVersion>
         

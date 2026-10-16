@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <Configurations>Debug;Release;Record;Test</Configurations>
+    </PropertyGroup>
+
+    <!-- The Record configuration records the interactions of the legacy code with its dependencies. -->
+    <PropertyGroup Condition="'$(Configuration)'=='Record'">
+        <DefineConstants>$(DefineConstants);RECORD_INTERACTIONS</DefineConstants>
+        <MetalamaWriteHtml>False</MetalamaWriteHtml>
+    </PropertyGroup>
+
+    <!-- The Test configuration is the build that the tests use. It replays the recorded interactions. -->
+    <PropertyGroup Condition="'$(Configuration)'=='Test'">
+        <DefineConstants>$(DefineConstants);REPLAY_INTERACTIONS</DefineConstants>
+        <MetalamaWriteHtml>False</MetalamaWriteHtml>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Metalama.Framework"/>
+        <PackageReference Include="Metalama.Extensions.Interceptors"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Update="reminder-template.txt" CopyToOutputDirectory="PreserveNewest"/>
+    </ItemGroup>
+
+</Project>

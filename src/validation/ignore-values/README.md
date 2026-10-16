@@ -1,5 +1,6 @@
 ---
 uid: sample-ignore-value
+browse-source: .
 keywords: "ignore values, forbidden value, .NET"
 created-date: 2023-03-28
 modified-date: 2024-09-09

@@ -1,5 +1,6 @@
 ---
 uid: sample-dirty-3
+browse-source: .
 summary: "This document explains integrating the `TrackChanges` aspect with the `INotifyPropertyChanged` pattern, detailing implementation steps and considerations for combining patterns."
 keywords: "IChangeTracking interface, INotifyPropertyChanged interface, NotifyPropertyChanged event, OnPropertyChanged method, change tracking"
 created-date: 2023-04-18

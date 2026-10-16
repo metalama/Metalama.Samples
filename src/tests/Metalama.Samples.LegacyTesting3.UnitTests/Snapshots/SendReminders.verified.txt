@@ -1,0 +1,2 @@
+INV-1001: 120.00 EUR sent to customer42@example.com.
+INV-1007: 70.50 EUR sent to customer42@example.com.
