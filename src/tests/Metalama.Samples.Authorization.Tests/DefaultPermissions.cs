@@ -13,8 +13,11 @@ public class Document : ISecurable
     [RequiresPermission( "Read", "Approve" )]
     public decimal Amount { get; set; }
 
-    // Non-public members are not secured by default.
+    // Fields and properties are secured whatever their accessibility, because they hold the state of the object.
     internal string? InternalNotes { get; set; }
+
+    // Non-public methods are not secured by default.
+    internal void Reset() => this._draft = null;
 
     // A static member cannot be secured: the validator reports warning AUTH002.
     public static int Count { get; set; }

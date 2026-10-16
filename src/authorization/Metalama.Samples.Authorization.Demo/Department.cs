@@ -20,9 +20,11 @@ public sealed class Department( Company company, string code, string name ) : En
     public string Name { get; init; } = name;
 
     /// <summary>
-    /// Gets the number of the last invoice created in the department. The member is <c>internal</c>, but the project
-    /// fabric secures non-public members too, so other code of the assembly cannot read it without permission.
+    /// Gets the number of the last invoice created in the department. The member is <c>internal</c>, but properties
+    /// are secured whatever their accessibility, so other code of the assembly cannot read it without permission.
+    /// Only the creation of an invoice advances the counter, so the setter requires <c>CreateInvoice</c>.
     /// </summary>
+    [RequiresPermission( PermissionNames.Read, DemoPermissions.CreateInvoice )]
     internal int LastInvoiceNumber { get; private set; }
 
     protected override IRoleBasedSecurable? SecurityParent => this.Company;
@@ -31,19 +33,21 @@ public sealed class Department( Company company, string code, string name ) : En
     /// Creates a draft invoice owned by the current user. The user must be allowed to create invoices
     /// in this department, and to read <paramref name="customer"/>. The caller adds the invoice to the database.
     /// </summary>
+    /// <remarks>
+    /// The method reads the invoice counter of the department, so it grants <c>Read</c> on the department: the numbering
+    /// must not depend on a rule of the policy. Writing the counter requires <c>CreateInvoice</c>, which the method
+    /// has already checked. The constructor of <see cref="Invoice"/> grants the permissions that it
+    /// needs on the new invoice.
+    /// </remarks>
     [RequiresPermission( DemoPermissions.CreateInvoice )]
+    [GrantsPermissions( PermissionNames.Read )]
     public Invoice CreateInvoice( [RequiresPermission( PermissionNames.Read )] Customer customer )
     {
         var creator = SecurityContext.Current?.Subject as User;
 
-        // The permission has been checked: build the object in a trusted scope,
-        // where setting the owner does not require the ChangeOwnership permission.
-        using ( SecurityContext.RunAsSystem() )
-        {
-            this.LastInvoiceNumber++;
+        this.LastInvoiceNumber++;
 
-            return new Invoice( this, customer, $"{this.Code}-{this.LastInvoiceNumber:0000}", creator ) { Owner = creator };
-        }
+        return new Invoice( this, customer, $"{this.Code}-{this.LastInvoiceNumber:0000}", creator );
     }
 
     public override string ToString() => this.Name;

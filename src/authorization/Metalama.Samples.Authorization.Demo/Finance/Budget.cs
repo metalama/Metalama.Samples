@@ -8,9 +8,6 @@ namespace Metalama.Samples.Authorization.Demo.Finance;
 /// </summary>
 public sealed class Budget( Department department, int fiscalYear, decimal amount ) : Entity
 {
-    private decimal _amount = amount;
-    private decimal _spent;
-
     // Used by Entity Framework, which creates entities in a system scope.
     private Budget() : this( null!, 0, 0 ) { }
 
@@ -18,11 +15,11 @@ public sealed class Budget( Department department, int fiscalYear, decimal amoun
 
     public int FiscalYear { get; } = fiscalYear;
 
-    public decimal Amount => this._amount;
+    public decimal Amount { get; private set; } = amount;
 
-    public decimal Spent => this._spent;
+    public decimal Spent { get; private set; }
 
-    public decimal Remaining => this._amount - this._spent;
+    public decimal Remaining => this.Amount - this.Spent;
 
     /// <summary>
     /// Gets the level of the budget, without its amounts. It requires only <see cref="PermissionNames.Read"/>, so the
@@ -39,7 +36,7 @@ public sealed class Budget( Department department, int fiscalYear, decimal amoun
     protected override IRoleBasedSecurable? SecurityParent => this.Department;
 
     // No attribute: Write is the default permission of methods.
-    public void Adjust( decimal delta ) => this._amount += delta;
+    public void Adjust( decimal delta ) => this.Amount += delta;
 
     public void RecordSpending( decimal amount )
     {
@@ -48,7 +45,7 @@ public sealed class Budget( Department department, int fiscalYear, decimal amoun
             throw new InvalidOperationException( $"Spending {amount} exceeds the remaining budget of {this.Department.Code}." );
         }
 
-        this._spent += amount;
+        this.Spent += amount;
     }
 
     public override string ToString() => $"budget {this.Department.Code} {this.FiscalYear}";

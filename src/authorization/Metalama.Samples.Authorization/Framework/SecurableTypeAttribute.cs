@@ -106,6 +106,14 @@ public sealed class SecurableTypeAttribute : TypeAspect
             return true;
         }
 
+        // The fields and properties hold the state of the object, so they are secured whatever their accessibility:
+        // a member of the class must not change or read the state without the permission. A private static member
+        // has no instance to secure, and is not exposed.
+        if ( member is IFieldOrProperty )
+        {
+            return !member.IsStatic || member.Accessibility != Accessibility.Private;
+        }
+
         return member.Accessibility switch
         {
             Accessibility.Public => true,

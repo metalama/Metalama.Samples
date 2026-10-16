@@ -94,13 +94,24 @@ public class OptionsBehaviorTests : IAsyncLifetime
         // in the demo project, across the project boundary.
         IRoleBasedSecurable invoice = this._org.SalesInvoice;
 
-        Assert.Same( this._org.Sales, invoice.SecurityParent );
+        // The override reads Department, which is secured, so the exclusion does not disclose the parent to a user
+        // who cannot read the invoice: the denial names Department, not SecurityParent.
+        using ( this._org.SignIn( this._org.Vera ) )
+        {
+            var exception = Assert.Throws<AccessDeniedException>( () => invoice.SecurityParent );
+            Assert.Equal( "Invoice.Department", exception.Record.Member );
+        }
+
+        using ( this._org.SignIn( this._org.Sam ) )
+        {
+            Assert.Same( this._org.Sales, invoice.SecurityParent );
+        }
     }
 
     [Fact]
-    public void NonPublicMembers_AreSecured_ByProjectOption()
+    public void NonPublicProperties_AreSecured()
     {
-        // LastInvoiceNumber is internal: it is secured only because the project fabric sets SecureNonPublicMembers.
+        // LastInvoiceNumber is internal: properties are secured whatever their accessibility.
         var exception = Assert.Throws<InvalidOperationException>( () => _ = this._org.Sales.LastInvoiceNumber );
         Assert.Contains( "Department.LastInvoiceNumber", exception.Message, StringComparison.Ordinal );
 

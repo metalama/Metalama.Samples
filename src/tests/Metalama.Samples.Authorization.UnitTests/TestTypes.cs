@@ -37,7 +37,18 @@ public class SpecialFolder : Folder;
 /// </summary>
 public sealed class Report : InMemoryRoleBasedSecurable
 {
+    // Private state, secured like any other state.
+    [RequiresPermission( PermissionNames.Read, PermissionNames.Write )]
     private string? _draftNotes;
+
+    public Report() { }
+
+    // A constructor that sets a secured property of the new report: it grants the permission on the new report only.
+    [GrantsPermissions( PermissionNames.Write )]
+    public Report( string body )
+    {
+        this.Body = body;
+    }
 
     // A detail.
     [RequiresPermission( PermissionNames.Read, PermissionNames.Write )]
@@ -47,7 +58,7 @@ public sealed class Report : InMemoryRoleBasedSecurable
     [RequiresPermission( "Summarize" )]
     public int BodyLength => this.Body?.Length ?? 0;
 
-    // An aggregate computed from private state, which is never secured.
+    // An aggregate computed from private state: reading it also reads _draftNotes, which is checked.
     [RequiresPermission( "Summarize" )]
     public int DraftNotesLength => this._draftNotes?.Length ?? 0;
 
@@ -202,5 +213,22 @@ public sealed class ProbePolicy : IAuthorizationPolicy
         _ = ((Folder) securable).Title;
 
         return true;
+    }
+}
+
+/// <summary>
+/// A policy that counts how many times it is evaluated, to test the cache of decisions.
+/// </summary>
+public sealed class CountingPolicy( IAuthorizationPolicy inner ) : IAuthorizationPolicy
+{
+    private int _evaluations;
+
+    public int Evaluations => Volatile.Read( ref this._evaluations );
+
+    public bool IsGranted( ISubject subject, Permission permission, ISecurable securable )
+    {
+        Interlocked.Increment( ref this._evaluations );
+
+        return inner.IsGranted( subject, permission, securable );
     }
 }

@@ -15,4 +15,10 @@ public static class DemoPermissions
     public const string RecordPayment = nameof(RecordPayment);
     public const string Void = nameof(Void);
     public const string ReadSensitive = nameof(ReadSensitive);
+
+    /// <summary>
+    /// The permission to change the status of an invoice. No rule of the policy gives it to a role: the methods of the
+    /// workflow, such as <c>Invoice.Approve</c>, grant it while they run, after their own permission has been checked.
+    /// </summary>
+    public const string ChangeStatus = nameof(ChangeStatus);
 }

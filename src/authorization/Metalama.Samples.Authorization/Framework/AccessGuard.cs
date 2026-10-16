@@ -23,31 +23,44 @@ public static class AccessGuard
         }
 
         var context = GetContext( member );
+        Permission requiredPermission = permission;
 
-        bool isGranted;
-        AccessRecord record;
-
-        // The policy and the label read secured members, for instance the owner of the object.
-        // Running them in a system scope avoids recursive checks.
-        using ( SecurityContext.RunAsSystem() )
+        // The decision is cached in the current execution context (see SecurityContext). Each access is still
+        // audited, because the auditor records accesses, not decisions.
+        if ( !SecurityContext.TryGetCachedDecision( securable, requiredPermission, out var isGranted ) )
         {
-            // A grant of a member that is running (see GrantsPermissionsAttribute) takes precedence over the policy.
-            isGranted = SecurityContext.IsGranted( securable, permission )
-                        || context.Policy.IsGranted( context.Subject, permission, securable );
-            record = new AccessRecord( context.Subject, permission, SecurityLabel.Of( securable ), member, accessKind );
+            // The policy reads secured members, for instance the owner of the object.
+            // Running it in a system scope avoids recursive checks.
+            using ( SecurityContext.RunAsSystem() )
+            {
+                // A grant of a member that is running (see GrantsPermissionsAttribute) takes precedence over the policy.
+                isGranted = SecurityContext.IsGranted( securable, requiredPermission )
+                            || context.Policy.IsGranted( context.Subject, requiredPermission, securable );
+            }
+
+            SecurityContext.CacheDecision( securable, requiredPermission, isGranted );
         }
 
         // The auditor runs with the permissions of the subject, outside of the system scope.
         if ( isGranted )
         {
-            if ( context.Auditor?.AuditsGrantsOf( record.Permission ) == true )
+            if ( context.Auditor?.AuditsGrantsOf( requiredPermission ) == true )
             {
-                context.Auditor.OnAccessGranted( record );
+                context.Auditor.OnAccessGranted( CreateRecord( context, securable, requiredPermission, member, accessKind ) );
             }
         }
         else
         {
-            Fail( context, record, null );
+            Fail( context, CreateRecord( context, securable, requiredPermission, member, accessKind ), null );
+        }
+    }
+
+    // The label reads secured members, so it is computed in a system scope.
+    private static AccessRecord CreateRecord( ISecurityContext context, ISecurable securable, Permission permission, string member, AccessKind accessKind )
+    {
+        using ( SecurityContext.RunAsSystem() )
+        {
+            return new AccessRecord( context.Subject, permission, SecurityLabel.Of( securable ), member, accessKind );
         }
     }
 

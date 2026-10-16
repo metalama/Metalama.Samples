@@ -15,19 +15,25 @@ namespace Metalama.Samples.Authorization.Demo.Sales;
 /// </remarks>
 public sealed class Invoice : Entity, ISecurableCollectionOwner
 {
-    private Department _department;
-    private InvoiceStatus _status;
-    private decimal _amountPaid;
-
     // Used by Entity Framework, which creates entities in a system scope, so the constructor can set secured properties.
     private Invoice() : this( null!, null!, null!, null ) { }
 
+    /// <summary>
+    /// Creates a draft invoice, owned by its creator. <see cref="Demo.Department.CreateInvoice"/> checks that the
+    /// creator may create it.
+    /// </summary>
+    /// <remarks>
+    /// The constructor sets secured members of the new invoice, so it grants the permissions that they require on it.
+    /// The grant does not apply to any other object.
+    /// </remarks>
+    [GrantsPermissions( PermissionNames.Write, PermissionNames.ChangeOwnership )]
     internal Invoice( Department department, Customer customer, string number, User? creator )
     {
-        this._department = department;
+        this.Department = department;
         this.Customer = customer;
         this.Number = number;
         this.CreatorUser = creator;
+        this.Owner = creator;
         this.DueDate = DateOnly.FromDateTime( DateTime.Today ).AddDays( 30 );
     }
 
@@ -48,9 +54,14 @@ public sealed class Invoice : Entity, ISecurableCollectionOwner
 
     public DateOnly DueDate { get; set; }
 
-    public Department Department => this._department;
+    // The department changes only through TransferTo, which requires ChangeOwnership.
+    [RequiresPermission( PermissionNames.Read, PermissionNames.ChangeOwnership )]
+    public Department Department { get; private set; }
 
-    public InvoiceStatus Status => this._status;
+    // The status, the payments and the void reason change only through the methods of the workflow, which grant
+    // ChangeStatus while they run.
+    [RequiresPermission( PermissionNames.Read, DemoPermissions.ChangeStatus )]
+    public InvoiceStatus Status { get; private set; }
 
     public IList<InvoiceLine> Lines { get; } = new SecurableList<InvoiceLine>();
 
@@ -61,11 +72,13 @@ public sealed class Invoice : Entity, ISecurableCollectionOwner
 
     public decimal Total => this.Lines.Sum( l => l.Amount );
 
-    public decimal AmountPaid => this._amountPaid;
+    [RequiresPermission( PermissionNames.Read, DemoPermissions.ChangeStatus )]
+    public decimal AmountPaid { get; private set; }
 
+    [RequiresPermission( PermissionNames.Read, DemoPermissions.ChangeStatus )]
     public string? VoidReason { get; private set; }
 
-    protected override IRoleBasedSecurable? SecurityParent => this._department;
+    protected override IRoleBasedSecurable? SecurityParent => this.Department;
 
     // Storage of the creator, mapped by Entity Framework.
     private User? CreatorUser { get; set; }
@@ -83,6 +96,7 @@ public sealed class Invoice : Entity, ISecurableCollectionOwner
     }
 
     [RequiresPermission( DemoPermissions.Approve )]
+    [GrantsPermissions( DemoPermissions.ChangeStatus )]
     public void Approve()
     {
         this.EnsureStatus( InvoiceStatus.Draft );
@@ -92,44 +106,47 @@ public sealed class Invoice : Entity, ISecurableCollectionOwner
             throw new InvalidOperationException( $"Invoice {this.Number} has no line." );
         }
 
-        this._status = InvoiceStatus.Approved;
+        this.Status = InvoiceStatus.Approved;
     }
 
     /// <summary>
     /// Sends the approved invoice to the customer through <paramref name="sender"/>.
     /// </summary>
     [RequiresPermission( DemoPermissions.Send )]
+    [GrantsPermissions( DemoPermissions.ChangeStatus )]
     public async Task SendAsync( IInvoiceSender sender, CancellationToken cancellationToken = default )
     {
         this.EnsureStatus( InvoiceStatus.Approved );
 
         await sender.SendAsync( this, cancellationToken );
 
-        this._status = InvoiceStatus.Sent;
+        this.Status = InvoiceStatus.Sent;
     }
 
     [RequiresPermission( DemoPermissions.RecordPayment )]
+    [GrantsPermissions( DemoPermissions.ChangeStatus )]
     public void RecordPayment( decimal amount )
     {
         this.EnsureStatus( InvoiceStatus.Sent );
 
-        this._amountPaid += amount;
+        this.AmountPaid += amount;
 
-        if ( this._amountPaid >= this.Total )
+        if ( this.AmountPaid >= this.Total )
         {
-            this._status = InvoiceStatus.Paid;
+            this.Status = InvoiceStatus.Paid;
         }
     }
 
     [RequiresPermission( DemoPermissions.Void )]
+    [GrantsPermissions( DemoPermissions.ChangeStatus )]
     public void Void( string reason )
     {
-        if ( this._status is InvoiceStatus.Paid or InvoiceStatus.Voided )
+        if ( this.Status is InvoiceStatus.Paid or InvoiceStatus.Voided )
         {
-            throw new InvalidOperationException( $"Invoice {this.Number} is {this._status} and cannot be voided." );
+            throw new InvalidOperationException( $"Invoice {this.Number} is {this.Status} and cannot be voided." );
         }
 
-        this._status = InvoiceStatus.Voided;
+        this.Status = InvoiceStatus.Voided;
         this.VoidReason = reason;
     }
 
@@ -141,7 +158,7 @@ public sealed class Invoice : Entity, ISecurableCollectionOwner
     [RequiresPermission( PermissionNames.ChangeOwnership )]
     public void TransferTo( [RequiresPermission( PermissionNames.ChangeOwnership )] Department target )
     {
-        this._department = target;
+        this.Department = target;
     }
 
     // The securable lists call this method after they have checked the Write permission, before each change.
@@ -159,9 +176,9 @@ public sealed class Invoice : Entity, ISecurableCollectionOwner
 
     private void EnsureStatus( InvoiceStatus expected )
     {
-        if ( this._status != expected )
+        if ( this.Status != expected )
         {
-            throw new InvalidOperationException( $"Invoice {this.Number} is {this._status}, expected {expected}." );
+            throw new InvalidOperationException( $"Invoice {this.Number} is {this.Status}, expected {expected}." );
         }
     }
 }

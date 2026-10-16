@@ -5,7 +5,19 @@ using System.Collections.Immutable;
 namespace Metalama.Samples.Authorization.Tests.CollectionProperty;
 public class Document : ISecurable
 {
-  private readonly SecurableList<string> _authors = [];
+  private readonly SecurableList<string> _authors1 = [];
+  private SecurableList<string> _authors
+  {
+    get
+    {
+      AccessGuard.Demand(this, "Read", "Document._authors", AccessKind.Read);
+      return SecurableCollection.SetOwner(_authors1, this, "Write", "Document._authors", "_authors");
+    }
+    init
+    {
+      _authors1 = value;
+    }
+  }
   private readonly IList<string> _tags = new SecurableList<string>();
   // The getter sets the owner of the securable list on the first access, so that changing the list requires Write.
   public IList<string> Tags

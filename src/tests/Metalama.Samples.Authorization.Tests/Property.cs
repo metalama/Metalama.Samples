@@ -14,7 +14,7 @@ public class Document : ISecurable
     [RequiresPermission( "Read" )]
     public string Number { get; } = "D-1";
 
-    // A private setter is an implementation detail and is not checked.
+    // A private setter is checked too: the members of the class need the permission to change the state.
     [RequiresPermission( "Read", "Write" )]
     public string? Status { get; private set; }
 

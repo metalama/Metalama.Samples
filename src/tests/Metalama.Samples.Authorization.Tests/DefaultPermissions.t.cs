@@ -2,7 +2,20 @@
 namespace Metalama.Samples.Authorization.Tests.DefaultPermissions;
 public class Document : ISecurable
 {
-  private string? _draft = "Draft";
+  private string? _draft1 = "Draft";
+  private string? _draft
+  {
+    get
+    {
+      AccessGuard.Demand(this, "Read", "Document._draft", AccessKind.Read);
+      return _draft1;
+    }
+    set
+    {
+      AccessGuard.Demand(this, "Write", "Document._draft", AccessKind.Write);
+      _draft1 = value;
+    }
+  }
   private string? _title;
   // Public instance members get the default Read and Write permissions.
   public string? Title
@@ -48,8 +61,23 @@ public class Document : ISecurable
       _amount = value;
     }
   }
-  // Non-public members are not secured by default.
-  internal string? InternalNotes { get; set; }
+  private string? _internalNotes;
+  // Fields and properties are secured whatever their accessibility, because they hold the state of the object.
+  internal string? InternalNotes
+  {
+    get
+    {
+      AccessGuard.Demand(this, "Read", "Document.InternalNotes", AccessKind.Read);
+      return _internalNotes;
+    }
+    set
+    {
+      AccessGuard.Demand(this, "Write", "Document.InternalNotes", AccessKind.Write);
+      _internalNotes = value;
+    }
+  }
+  // Non-public methods are not secured by default.
+  internal void Reset() => this._draft = null;
   // A static member cannot be secured: the validator reports warning AUTH002.
   public static int Count { get; set; }
   // Methods are secured too, with Write by default.

@@ -1,8 +1,10 @@
+using System.Collections.Immutable;
+
 namespace Metalama.Samples.Authorization.Tests.Validation_UnsecuredMembers;
 
 public class Document : ISecurable
 {
-    private readonly string[] _pages = ["Cover"];
+    private readonly ImmutableArray<string> _pages = ["Cover"];
 
     // Secured by default: no warning.
     public string? Title { get; set; }

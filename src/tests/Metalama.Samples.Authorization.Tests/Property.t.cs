@@ -49,7 +49,7 @@ public class Document : ISecurable
     }
   }
   private string? _status;
-  // A private setter is an implementation detail and is not checked.
+  // A private setter is checked too: the members of the class need the permission to change the state.
   [RequiresPermission("Read", "Write")]
   public string? Status
   {
@@ -60,6 +60,7 @@ public class Document : ISecurable
     }
     private set
     {
+      AccessGuard.Demand(this, "Write", "Document.Status", AccessKind.Write);
       _status = value;
     }
   }

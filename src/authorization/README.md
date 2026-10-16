@@ -82,7 +82,7 @@ The aspect implements `IAspect<IMethod>`, `IAspect<IFieldOrProperty>` and `IAspe
 A few details are worth noting:
 
 * For a parameter, the aspect adds a contract with `AddContract`. Only parameters that have the attribute get a check.
-* A private setter is not checked. The class changes its own state through it, typically from a method that is itself secured.
+* Every setter is checked, including a private one: the members of the class need the permission to change the state of the object. A property that only some operations change declares the permission of these operations as its write permission. For instance, `Customer.Department` requires `ChangeOwnership`, the permission of `Customer.MoveTo`.
 * The getter of a collection property sets the owner of the `SecurableList<T>` that the property returns (see [Collections](#collections)).
 * The aspect is `[Inheritable]`. An override of a secured virtual member gets the same check, so a derived class cannot skip it by not calling the base implementation. On an abstract member, the aspect secures all the overrides.
 * The eligibility rules reject static members, members of a type that is not securable, `out` parameters, and parameters whose type is not securable. A method or property check is made on the current instance, so its type must implement `ISecurable`, and a static member has no instance at all. A parameter check needs a securable argument: passing an object that no policy can secure would always be denied, so it is a build error. Abstract members are rejected except through inheritance, with `builder.ExceptForInheritance().MustNotBeAbstract()`.
@@ -94,13 +94,11 @@ The permission of a member is checked when the member is entered, and only then.
 
 This rule follows from the design: each check protects one member, whatever the code that calls it. A member that granted more rights to the code that it runs would turn every bug in its body into a way around the policy.
 
-The rule has a consequence for aggregates. It is common that a user may see an aggregate, such as a total or a count, but not the details that it is computed from. An aggregate computed from secured members requires the permissions of these members. An aggregate computed from private state requires only its own permission, because private members are never secured. The unit tests in `NestedAccessTests` verify both cases.
-
-Computing an aggregate from private state is not always possible. The details can be exposed only through secured members, for instance a collection initialized with a `SecurableList<T>`, or the aggregate can be computed from other aggregates. The next aspect covers this case explicitly.
+The rule has a consequence for aggregates. It is common that a user may see an aggregate, such as a total or a count, but not the details that it is computed from. An aggregate computed from secured members requires the permissions of these members. Private state is not an exception: every field and every property is secured, whatever its accessibility, so moving the details to a private field does not remove their check. The unit tests in `NestedAccessTests` verify both cases. The next aspect covers aggregates explicitly.
 
 ### GrantsPermissions
 
-The `[GrantsPermissions]` aspect grants permissions while a member runs. On a method or a property, it grants them on the current instance. On a parameter, it grants them on the argument. In the demo, a department assistant may see whether the budget of their department is available, low or exhausted, but not its amounts. The `Status` property requires `Read`, and computes the level from `Amount` and `Remaining`, which require `ReadSensitive`:
+The `[GrantsPermissions]` aspect grants permissions while a member runs. On a method, a property or a constructor, it grants them on the current instance. On a parameter, it grants them on the argument. In the demo, a department assistant may see whether the budget of their department is available, low or exhausted, but not its amounts. The `Status` property requires `Read`, and computes the level from `Amount` and `Remaining`, which require `ReadSensitive`:
 
 ```csharp
 [RequiresPermission( PermissionNames.Read )]
@@ -125,12 +123,33 @@ Task SendAsync(
 
 [!metalama-test ../tests/Metalama.Samples.Authorization.Tests/GrantsPermissions_Interface.cs]
 
-The grant is a scope of the ambient security context. `SecurityContext.Grant` pushes the grant on an immutable stack (`ImmutableStack<T>`), which is stored with the current context in an `AsyncLocal<T>` field. Disposing the scope restores the previous stack. A nested grant shares the outer grants instead of copying them. `AccessGuard.Demand` looks for a grant of the permission on the same object before it calls the policy. The grants are not members of `ISecurityContext`: an application implements this interface to provide the subject and the policy, and it should not have to implement grants.
+On a constructor, the grant gives the constructor access to the secured members of the new object. In the demo, `Department.CreateInvoice` requires `CreateInvoice` on the department. It then calls the constructor of `Invoice`, which sets the due date and the owner of the new invoice. These members require `Write` and `ChangeOwnership`, which the creator does not always have, so the constructor grants them:
+
+```csharp
+[GrantsPermissions( PermissionNames.Write, PermissionNames.ChangeOwnership )]
+internal Invoice( Department department, Customer customer, string number, User? creator )
+```
+
+`Department.CreateInvoice` also increments the invoice counter of the department. The counter declares `CreateInvoice` as its write permission, which the method has already checked. The method grants `Read` on the department, so the numbering of the invoices does not depend on a rule of the policy. An earlier version of the demo opened a system scope with `SecurityContext.RunAsSystem` in `CreateInvoice`. A system scope disables every check, on every object, including the checks of the code that the method calls. The two grants give only the permissions that the code needs, and only on the department and on the new invoice.
+
+A method can also grant a permission that no role has. The status, the payments and the void reason of an invoice require `ChangeStatus` to change, and no rule of the policy gives `ChangeStatus` to a role. The methods of the workflow, `Approve`, `SendAsync`, `RecordPayment` and `Void`, grant it while they run, after their own permission has been checked. Changing the status is then a consequence of an operation of the workflow, and no other code can do it, even with the `Write` permission:
+
+```csharp
+[RequiresPermission( PermissionNames.Read, DemoPermissions.ChangeStatus )]
+public InvoiceStatus Status { get; private set; }
+
+[RequiresPermission( DemoPermissions.Approve )]
+[GrantsPermissions( DemoPermissions.ChangeStatus )]
+public void Approve()
+```
+
+The grant is a scope of the ambient security context. `SecurityContext.Grant` starts a new execution context, whose grants are an immutable dictionary (`ImmutableDictionary<ISecurable, ImmutableList<Permission>>`) that contains the outer grants and the new one. Disposing the scope restores the previous execution context. `AccessGuard.Demand` looks for a grant of the permission on the same object before it calls the policy. A grant also starts a new cache of decisions (see [Caching the decisions](#caching-the-decisions)). The grants are not members of `ISecurityContext`: an application implements this interface to provide the subject and the policy, and it should not have to implement grants.
 
 The aspect is designed to give the smallest possible grant:
 
 * The order of the aspects is critical. `[RequiresPermission]` is the outer aspect and `[GrantsPermissions]` is the inner one. The grant starts only after the permission of the member has been checked, so the grant cannot satisfy this permission. The parameter checks also run before the grant. The order is declared with `[assembly: AspectOrder]`. The same declaration orders `[SecurableType]`, which must be processed before `[RequiresPermission]` because it adds `[RequiresPermission]` aspects.
-* The member must have a permission check, explicit or added by default. Otherwise any caller would get the granted permissions, so the validator reports the error `AUTH004`.
+* The member must have a permission check, explicit or added by default. Otherwise any caller would get the granted permissions, so the validator reports the error `AUTH004`. A constructor does not need a check: it grants permissions on the object that it creates, and no caller can access this object before the constructor returns.
+* On a constructor, the grant starts after the call to the base constructor, or to another constructor of the class with `: this(...)`. It does not cover the initializers of fields and properties, which set the backing fields without a check.
 * The grant applies to one object only: the current instance, or the argument of the parameter. A member that reads the details of another object needs the permissions of the subject on that object. A null argument gets no grant.
 * The grant applies only in the current context. When code switches to another subject with `SecurityContext.Use`, the grants of the previous subject do not apply.
 * The grant ends when the member returns. In an `async` member, it covers the continuations. An iterator is not eligible, because its body runs when the caller enumerates the result, after the member has returned. An automatic property is not eligible either, because it has no code that could use the grant.
@@ -156,9 +175,9 @@ The cost is that securing becomes implicit: a class that implements the interfac
 
 The aspect adds child aspects with `builder.Outbound.SelectMany(...).AddAspectIfEligible(...)`. A child aspect must be processed after its parent, so the library declares the order with `[assembly: AspectOrder]` (see [GrantsPermissions](#grantspermissions)).
 
-The aspect secures by default. Every public field, property and method gets a check, and so does every explicit interface implementation: such a member is private in C#, but any caller reaches it through the interface. A reader who copies the aspect without any configuration therefore gets a secured class, not a class with unsecured methods. A member that must stay unsecured is excluded explicitly, with `[AuthorizationOptions( IsDefaultSecuringEnabled = false )]`, which also documents the decision for a reviewer.
+The aspect secures by default. Every field and every property gets a check, whatever its accessibility, because they hold the state of the object: a member of the class must not read or change the state without the permission. Every public method gets a check too, and so does every explicit interface implementation: such a member is private in C#, but any caller reaches it through the interface. A reader who copies the aspect without any configuration therefore gets a secured class, not a class with unsecured methods. A member that must stay unsecured is excluded explicitly, with `[AuthorizationOptions( IsDefaultSecuringEnabled = false )]`, which also documents the decision for a reviewer.
 
-The aspect never secures private members, members that already have `[RequiresPermission]`, or overrides of `ToString`, `Equals` and `GetHashCode`. Loggers and collections call these methods.
+The aspect never secures private methods, members that already have `[RequiresPermission]`, or overrides of `ToString`, `Equals` and `GetHashCode`. Loggers and collections call these methods. A private method runs with the permissions of its caller, and its accesses to the state are checked. A `readonly` field gets only a read check, because only a constructor can write it.
 
 ### Verifying that every member is secured
 
@@ -215,7 +234,7 @@ void ISecurableCollectionOwner.OnCollectionChanging( string propertyName, Access
 The aspects check the accesses to the members of a class. They cannot check what the class does with the references that it returns or receives. A securable class therefore follows these rules, which the demo applies:
 
 * A collection property is initialized with a `SecurableList<T>`. The getter fails closed if it returns an ordinary list, and the validator warns about collection types that it cannot secure.
-* A reference to another secured object changes only through a method with a parameter check. A setter can only check the object that it belongs to, not the new value. So `Invoice.Customer` and `Customer.Department` have private setters, and `Invoice.ChangeCustomer` and `Customer.MoveTo` check the permission on the new value.
+* A reference to another secured object changes only through a method with a parameter check. A setter can only check the object that it belongs to, not the new value. So `Invoice.Customer` and `Customer.Department` have private setters, which only the class can call, and `Invoice.ChangeCustomer` and `Customer.MoveTo` check the permission on the new value. The private setters are checked too.
 * A guarantee that does not depend on the policy is structural. `Company.Name` and `Department.Name` are init-only, so no rule added to the policy later can allow renaming them.
 * A label identifies the object in messages without disclosing its data (see `IHasSecurityLabel` below).
 
@@ -228,14 +247,14 @@ The aspects read their defaults from the `AuthorizationOptions` class, which imp
 | `DefaultReadPermission` | `Read` | Permission to read a field or property. |
 | `DefaultWritePermission` | `Write` | Permission to write a field or property. |
 | `DefaultExecutePermission` | `Write` | Permission to execute a method. |
-| `SecureNonPublicMembers` | `false` | Whether `[SecurableType]` also secures `internal` and `protected` members. |
+| `SecureNonPublicMembers` | `false` | Whether `[SecurableType]` also secures `internal` and `protected` methods. Fields and properties are always secured. |
 | `IsDefaultSecuringEnabled` | `true` | Whether `[SecurableType]` secures the target. Set it to `false` to exclude a namespace, a type or a member. |
 
 [!metalama-file Metalama.Samples.Authorization/Framework/AuthorizationOptions.cs]
 
 Options can be set at any level, and the nearest level wins. The demo uses all of them:
 
-* A project fabric also secures non-public members:
+* A project fabric also secures non-public methods:
 
   [!metalama-file Metalama.Samples.Authorization.Demo/AuthorizationFabric.cs]
 
@@ -260,11 +279,36 @@ The generated code calls `AccessGuard.Demand`:
 
 [!metalama-file Metalama.Samples.Authorization/Framework/AccessGuard.cs]
 
-* There is no check in a system scope, opened with `SecurityContext.RunAsSystem()`. Trusted code uses it, for instance to seed a database or to build an object after its permission has been checked.
+* There is no check in a system scope, opened with `SecurityContext.RunAsSystem()`. Trusted infrastructure code uses it when no user operation is running: the demo uses it to seed the database and to create the entities that Entity Framework loads, and `AccessGuard` uses it to run the policy. A member that needs more permissions on its own object, or on an object that it receives, uses `[GrantsPermissions]` instead (see [GrantsPermissions](#grantspermissions)).
 * Without a current context, the access fails. A missing context is a configuration error, not a reason to skip security.
 * The policy runs in a system scope. The policy reads secured members, such as the owner of the object, and these reads must not trigger checks recursively.
 * The auditor runs outside of the system scope. An auditor that reads data or writes to a secured store does it with the permissions of the current subject, not with implicit privileges.
 * `AccessGuard.Deny` refuses an operation for a reason that is not a missing permission, and audits it like any other denial. The role-based layer uses it to refuse that a user assigns a role to themself.
+* The decision is cached in the current execution context. Each access is still audited, because the auditor records accesses, not decisions.
+
+### Caching the decisions
+
+Every access to a field or a property runs a check, so the same decision is needed many times. For instance, `Invoice.Approve` reads `Status` and `Lines` and writes `Status`. The framework caches the decisions at two levels.
+
+The first level is the execution context. `SecurityContext.Use` starts an execution context, for instance for a request. All the code that runs in the execution context shares its cache: the methods that it calls, the continuations of its `async` methods and the tasks that it starts. A method does not start an execution context when it enters an object. The check of the method has already put the object in the cache of the current execution context.
+
+* The cache is an immutable dictionary, `ImmutableDictionary<ISecurable, ImmutableList<(Permission, bool)>>`. It compares the objects by reference, and it contains the denials as well as the grants.
+* The `AsyncLocal<T>` field holds a reference to the execution context, and a new decision replaces the dictionary of the execution context with `ImmutableInterlocked`. The value of the `AsyncLocal<T>` field does not change. A decision cached by an `async` method is therefore visible to its caller after the method returns, and concurrent tasks add decisions without a lock.
+* A grant breaks the execution context. `SecurityContext.Grant` starts a child execution context with an empty cache, because the decisions of the parent do not take the grant into account. When the grant ends, the parent execution context is restored, without the decisions of the child, which took the grant into account.
+* The cache is never invalidated. An operation runs with a consistent set of decisions, and a change of the rights applies to the execution contexts that start after it. A long-running operation, such as a background job, keeps the decisions of its start. It should start an execution context for each unit of work.
+
+The second level is shared by all the execution contexts of the process. `CachingAuthorizationPolicy` wraps a policy and caches its decisions in an `IMemoryCache`. It is called only when the cache of the execution context does not contain the decision, so it does not change the consistency of an operation.
+
+* The keys identify the subject and the object, not their instances, because each request loads new instances. The demo uses the class and the database key of each entity. An object without a key, for instance an invoice that has not been saved, is not cached.
+* The cache is invalidated manually. `Invalidate` removes the decisions on an object, and on the objects that depend on it, for instance the objects that inherit their roles from it. `InvalidateAll` removes all decisions. Each object has a cancellation token, stored in the memory cache too, so that the tokens of the objects that are no longer used are removed. When a token is evicted, it is canceled, so no decision survives the token that invalidates it.
+* The tokens are taken before the policy runs. When an invalidation happens while the policy runs, the new entry has a canceled token and expires immediately.
+* A decision also expires after five minutes, even without invalidation.
+
+[!metalama-file Metalama.Samples.Authorization/Framework/CachingAuthorizationPolicy.cs]
+
+In the demo, `PermissionCacheInvalidationInterceptor` invalidates the cache after each save. A changed or deleted entity is invalidated, because its owner or its parent may have changed. A change of the role assignments invalidates all the decisions, because the roles of an object apply to all its descendants, and role assignments change rarely. `DatabaseAuthorizationPolicy` raises its `Reloaded` event after it reloads the rules, and the cache is cleared then.
+
+[!metalama-file Metalama.Samples.Authorization.Demo/Data/PermissionCacheInvalidationInterceptor.cs]
 
 ### What the messages and audit records disclose
 
@@ -278,7 +322,7 @@ The auditor receives every denial. It can also select permissions whose grants i
 
 The framework enforces authorization inside a process. It protects against missing checks, not against malicious code: any code of the process can call `SecurityContext.Use`, `SecurityContext.Grant` or `SecurityContext.RunAsSystem`. Only trusted infrastructure calls them, such as the authentication middleware or the database seeder. `SecurityContext.Current` has no public setter, so the only way to change it is a scope that restores the previous value. A context or a system scope also applies to the tasks started while it is active, because `AsyncLocal<T>` values flow into them.
 
-`SecurityContext` stores the context with its grants, and the system scope, in `AsyncLocal<T>` fields. They follow `async` code and stay isolated between concurrent requests.
+`SecurityContext` stores the current execution context, which holds the context, the grants and the cache, and the system scope in `AsyncLocal<T>` fields. They follow `async` code and stay isolated between concurrent requests. The scopes are `SecurityScope` structures, so opening one does not allocate an object. Disposing the default value of the structure does nothing.
 
 [!metalama-file Metalama.Samples.Authorization/Framework/SecurityContext.cs]
 
@@ -481,6 +525,7 @@ Entity Framework reads and writes every mapped property when it loads an object,
 * Entity Framework fills collections through their backing field, before the first access through the property, so a `SecurableList<T>` has no owner yet and checks nothing. A primitive collection, such as `Invoice.Notes`, is assigned by Entity Framework when it loads the object, so a value converter recreates a `SecurableList<T>`.
 * `EfRoleBasedSecurable`, the base class of `Entity`, stores the owner as a `User` navigation and the role assignments as an owned collection of `RoleAssignmentRecord`. `ConfigureRoleBasedStorage` maps them for each entity class. These storage members are excluded from default securing with `[AuthorizationOptions( IsDefaultSecuringEnabled = false )]`. The public `Owner` and `RoleAssignments` members are the secured views of these members, and the model ignores them.
 * The navigations that the security model needs are loaded automatically with `AutoInclude`: the parent chain of each object, its owner, and its role assignments. Otherwise, a role inherited from a parent that is not loaded would be missed. The policy would then deny the access, which is safe but wrong.
+* The state of an entity is stored in properties, not in fields. Metalama secures a field by turning it into a property, and moves its value to a new field, for instance `_amount1` for `_amount`, which Entity Framework cannot discover by convention. A property with a private setter, such as `Budget.Amount`, has a backing field that Entity Framework discovers, `_amount`, and it is secured in the same way.
 * By convention, Entity Framework maps only the properties that have a setter. The get-only properties that expose the state of an object, such as `Invoice.Status`, are mapped explicitly. A test checks that every field of every entity is mapped.
 
 [!metalama-file Metalama.Samples.Authorization.Demo/Data/InvoicingDbContext.cs]
@@ -502,8 +547,10 @@ The aspect tests in `Metalama.Samples.Authorization.Tests` verify the generated 
 `Metalama.Samples.Authorization.UnitTests` tests the framework on small test types, independently of the demo:
 
 * `SecurityContextTests`: fail-closed behavior, system scopes, and context isolation across `await` and concurrent tasks.
-* `NestedAccessTests`: the permission of a member does not grant the permissions of the members that it accesses, and aggregates over private state.
-* `GrantsPermissionsTests`: a grant gives its permissions after the check of the member, on the current instance only, in the current context only, and until the member returns, also across `await`. It takes precedence over the denials of the policy.
+* `NestedAccessTests`: the permission of a member does not grant the permissions of the members that it accesses, including private state.
+* `PermissionCacheTests`: the cache of an execution context, shared by the `async` methods and the tasks of the context, the denials cached and still audited, the grant that breaks the execution context, and a change of rights that applies to the next execution context.
+* `CachingAuthorizationPolicyTests`: the cache shared by all execution contexts, the objects without a key, the invalidation of an object and of its descendants, and an invalidation while the policy runs.
+* `GrantsPermissionsTests`: a grant gives its permissions after the check of the member, on the current instance only, in the current context only, and until the member returns, also across `await`. It takes precedence over the denials of the policy. A constructor grants its permissions on the new object only, until it returns.
 * `AccessGuardTests`: audit records of denials and grants, labels in messages, and an auditor that runs without privileges.
 * `SecurableListTests`: the owner set on the first access and only once, changes denied without the write permission, with the kind of change, read-only properties secured too, the getter that fails closed on an ordinary list, and the owner hook.
 * `RoleBasedPolicyTests`: allow and deny rules, class hierarchy, built-in and application-defined computed roles, role inheritance through any parent, self-assignment, and the immutability of the policy.
@@ -525,7 +572,7 @@ The `PermissionMatrixTests` theory runs every operation as every user, on a fres
 
 The other test classes cover what a single operation cannot show:
 
-* `WorkflowTests`: the invoice lifecycle, role changes that take effect immediately, transfers that change who inherits access, and the difference between a denied permission and a broken business rule.
+* `WorkflowTests`: the invoice lifecycle, role changes that take effect once they are saved, transfers that change who inherits access, and the difference between a denied permission and a broken business rule.
 * `OptionsBehaviorTests`: proof at run time that each build-time option took effect.
 * `StructuralRulesTests`: the guarantees that do not depend on the policy, such as init-only names, private setters for references to secured objects, and read-only collections.
 * `AuditTests`: the content of audit records for the demo operations.
@@ -534,7 +581,9 @@ The other test classes cover what a single operation cannot show:
 
 ## Limitations
 
-* The policy evaluates the rules on each access and does not cache decisions. Each check allocates a `Permission` and walks the type hierarchy and the role assignments.
+* The cache of an execution context is never invalidated. A long-running operation keeps the decisions of its start.
+* The cache shared by all execution contexts is invalidated after a save. The other requests do not see a change that is not saved. A request that loaded the data before a save, and that asks the policy after the invalidation, can cache a decision made on the old data until it expires.
+* Every access to a field or a property runs a check. A check that finds its decision in the cache of the execution context costs a dictionary lookup and the allocation of a `Permission`.
 * Rules apply to types, not to object states. "Only draft invoices can be edited" is a business rule in the `Invoice` methods.
 * A department manager can assign any role in their department to another person, including a role with more rights than their own. Nobody can assign a role to themself, but a real system also restricts which roles each role may assign.
 * The aspects protect members, not rows. A user without any role can query invoices, but cannot read their members. To filter rows, use another mechanism, for instance an Entity Framework global query filter.

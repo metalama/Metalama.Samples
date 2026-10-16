@@ -30,8 +30,21 @@ public class Document : ISecurable
       _protectedNotes = value;
     }
   }
-  // Private members are never secured by default.
-  private string? PrivateNotes { get; set; }
+  private string? _privateNotes;
+  // A field or a property is secured whatever its accessibility, because it holds the state of the object.
+  private string? PrivateNotes
+  {
+    get
+    {
+      AccessGuard.Demand(this, "Read", "Document.PrivateNotes", AccessKind.Read);
+      return _privateNotes;
+    }
+    set
+    {
+      AccessGuard.Demand(this, "Write", "Document.PrivateNotes", AccessKind.Write);
+      _privateNotes = value;
+    }
+  }
   public string? Summary
   {
     get
@@ -40,4 +53,15 @@ public class Document : ISecurable
       return this.PrivateNotes;
     }
   }
+  // The option secures the internal and protected methods. A private method is never secured by default: it runs
+  // with the permissions of its caller, and its accesses to the state are checked.
+  internal void Archive()
+  {
+    AccessGuard.Demand(this, "Write", "Document.Archive", AccessKind.Execute);
+  }
+  protected void Restore()
+  {
+    AccessGuard.Demand(this, "Write", "Document.Restore", AccessKind.Execute);
+  }
+  private void Clear() => this.PrivateNotes = null;
 }

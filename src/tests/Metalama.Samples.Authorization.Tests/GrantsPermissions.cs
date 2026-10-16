@@ -46,6 +46,22 @@ public class WeightedReport : Report
     public override int Score => 2 * (this.Body?.Length ?? 0);
 }
 
+// A constructor grants permissions on the new object. It needs no check, because no caller can access the object
+// before the constructor returns. The grant starts after the call to the other constructor.
+public class Draft : ISecurable
+{
+    public Draft() : this( "" ) { }
+
+    [GrantsPermissions( "Write" )]
+    public Draft( string body )
+    {
+        this.Body = body;
+    }
+
+    [RequiresPermission( "Read", "Write" )]
+    public string? Body { get; set; }
+}
+
 // The check can also come from the default securing of SecurableType.
 public class Summary : ISecurable
 {

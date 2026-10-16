@@ -55,12 +55,15 @@ public class NestedAccessTests
     }
 
     [Fact]
-    public void Aggregate_OverPrivateState_RequiresOnlyItsOwnPermission()
+    public void Aggregate_OverPrivateState_RequiresThePermissionsOfTheState()
     {
-        // Private members are never secured, so the aggregate is computed without the permission of the details.
+        // A private field is state, and is checked like a property.
         using ( this.SignIn( this._summarizerOnly ) )
         {
-            Assert.Equal( 17, this._report.DraftNotesLength );
+            var exception = Assert.Throws<AccessDeniedException>( () => this._report.DraftNotesLength );
+
+            Assert.Equal( "Report._draftNotes", exception.Member );
+            Assert.Equal( Read, exception.Permission.Name );
         }
     }
 

@@ -6,7 +6,20 @@ public interface IArchivable
 }
 public class Document : IArchivable, ISecurable
 {
-  private bool _isArchived;
+  private bool _isArchived1;
+  private bool _isArchived
+  {
+    get
+    {
+      AccessGuard.Demand(this, "Read", "Document._isArchived", AccessKind.Read);
+      return _isArchived1;
+    }
+    set
+    {
+      AccessGuard.Demand(this, "Write", "Document._isArchived", AccessKind.Write);
+      _isArchived1 = value;
+    }
+  }
   // Explicit interface implementations are private, but callers reach them through the interface,
   // so they are secured like public members.
   void IArchivable.Archive()

@@ -26,6 +26,14 @@ public class WorkflowTests : IAsyncLifetime
 
     private void Denied( User user, Action action ) => this.As( user, () => Assert.Throws<AccessDeniedException>( action ) );
 
+    // Runs a request that changes rights and saves them, like a request of the application. The cache of decisions
+    // shared by all requests is invalidated when the change is saved.
+    private void AsAndSave( User user, Action action )
+    {
+        this.As( user, action );
+        this._org.Db.SaveChanges();
+    }
+
     [Fact]
     public async Task Invoice_FullLifecycle_UsesTheRightRoleAtEachStep()
     {
@@ -144,10 +152,10 @@ public class WorkflowTests : IAsyncLifetime
     public void TransferTo_ChangesWhoInheritsAccess()
     {
         var nina = new User( "Nina" );
-        this.As( this._org.Mia, () => this._org.Sales.AssignRole( nina, DemoRoles.DepartmentAssistant ) );
+        this.AsAndSave( this._org.Mia, () => this._org.Sales.AssignRole( nina, DemoRoles.DepartmentAssistant ) );
         this.As( nina, () => _ = this._org.SalesInvoice.Total );
 
-        this.As( this._org.Mia, () => this._org.SalesInvoice.TransferTo( this._org.Marketing ) );
+        this.AsAndSave( this._org.Mia, () => this._org.SalesInvoice.TransferTo( this._org.Marketing ) );
 
         // Nina is a sales assistant, and the invoice now belongs to Marketing.
         this.Denied( nina, () => _ = this._org.SalesInvoice.Total );
@@ -164,7 +172,7 @@ public class WorkflowTests : IAsyncLifetime
     {
         this.Denied( this._org.Vera, () => _ = this._org.SalesInvoice.Total );
 
-        this.As( this._org.Mia, () => this._org.SalesInvoice.Owner = this._org.Vera );
+        this.AsAndSave( this._org.Mia, () => this._org.SalesInvoice.Owner = this._org.Vera );
 
         // Vera has no role, but the owner of an invoice reads and edits it.
         this.As( this._org.Vera, () => this._org.SalesInvoice.Lines.Add( new InvoiceLine( "Expedite", 1, 50 ) ) );
@@ -174,7 +182,7 @@ public class WorkflowTests : IAsyncLifetime
     }
 
     [Fact]
-    public void AssignedRole_TakesEffectImmediately()
+    public void AssignedRole_TakesEffectAfterTheSave()
     {
         var nina = new User( "Nina" );
 
@@ -184,10 +192,10 @@ public class WorkflowTests : IAsyncLifetime
     }
 
     [Fact]
-    public void RevokedRole_TakesEffectImmediately()
+    public void RevokedRole_TakesEffectAfterTheSave()
     {
         this.As( this._org.Erin, () => _ = this._org.EngineeringInvoice.Total );
-        this.As( this._org.Alice, () => this._org.Engineering.RevokeRole( this._org.Erin, DemoRoles.DepartmentManager ) );
+        this.AsAndSave( this._org.Alice, () => this._org.Engineering.RevokeRole( this._org.Erin, DemoRoles.DepartmentManager ) );
         this.Denied( this._org.Erin, () => _ = this._org.EngineeringInvoice.Total );
     }
 
@@ -211,7 +219,7 @@ public class WorkflowTests : IAsyncLifetime
     public void AuditorRole_AddedToAManager_RemovesTheirWriteAccess()
     {
         this.As( this._org.Erin, () => this._org.EngineeringInvoice.Lines.Add( new InvoiceLine( "Review", 1, 10 ) ) );
-        this.As( this._org.Alice, () => this._org.Contoso.AssignRole( this._org.Erin, DemoRoles.Auditor ) );
+        this.AsAndSave( this._org.Alice, () => this._org.Contoso.AssignRole( this._org.Erin, DemoRoles.Auditor ) );
         this.Denied( this._org.Erin, () => this._org.EngineeringInvoice.Lines.Add( new InvoiceLine( "Review", 1, 10 ) ) );
     }
 

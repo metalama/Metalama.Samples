@@ -13,8 +13,8 @@ internal sealed class AuthorizationFabric : ProjectFabric
         => amender.SetOptions(
             new AuthorizationOptions
             {
-                // internal and protected members are secured too, because other code of this assembly
-                // must not bypass checks by calling them.
+                // internal and protected methods are secured too, because other code of this assembly
+                // must not bypass checks by calling them. Fields and properties are always secured.
                 SecureNonPublicMembers = true
             } );
 }

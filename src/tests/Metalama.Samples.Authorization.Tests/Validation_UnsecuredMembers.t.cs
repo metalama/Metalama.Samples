@@ -1,10 +1,23 @@
 // Warning AUTH002 on `Create`: `'Document.Create()' is a static member of the secured type 'Document'. A static member has no instance on which to check a permission. Move it to another type, or exclude it explicitly with [AuthorizationOptions( IsDefaultSecuringEnabled = false )].`
 // Warning AUTH001 on `this`: `'Document.this[int]' is exposed by the secured type 'Document' but has no permission check. Add [RequiresPermission], or exclude the member explicitly with [AuthorizationOptions( IsDefaultSecuringEnabled = false )].`
 // Warning AUTH001 on `Changed`: `'Document.Changed' is exposed by the secured type 'Document' but has no permission check. Add [RequiresPermission], or exclude the member explicitly with [AuthorizationOptions( IsDefaultSecuringEnabled = false )].`
+using System.Collections.Immutable;
 namespace Metalama.Samples.Authorization.Tests.Validation_UnsecuredMembers;
 public class Document : ISecurable
 {
-  private readonly string[] _pages = ["Cover"];
+  private readonly ImmutableArray<string> _pages1 = ["Cover"];
+  private ImmutableArray<string> _pages
+  {
+    get
+    {
+      AccessGuard.Demand(this, "Read", "Document._pages", AccessKind.Read);
+      return _pages1;
+    }
+    init
+    {
+      _pages1 = value;
+    }
+  }
   private string? _title;
   // Secured by default: no warning.
   public string? Title

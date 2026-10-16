@@ -96,10 +96,11 @@ public sealed class RequiresPermissionAttribute : Aspect, IAspect<IMethod>, IAsp
 
         var secureGetter = target.GetMethod != null;
 
-        // Private setters are implementation details: the class changes its own state through them,
-        // typically from a method that is itself secured.
+        // Every setter is checked, including a private one: the permission of a method does not imply the permission
+        // to change the properties of the object. A method that changes a property that its own permission does not
+        // cover grants the permission of the property with GrantsPermissions.
         var secureSetter = target.Writeability is Writeability.All or Writeability.InitOnly
-                           && target.SetMethod is { Accessibility: not Accessibility.Private };
+                           && target.SetMethod != null;
 
         if ( !secureGetter && !secureSetter )
         {

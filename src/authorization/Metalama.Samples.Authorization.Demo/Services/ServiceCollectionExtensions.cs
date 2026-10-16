@@ -1,6 +1,7 @@
 using Metalama.Samples.Authorization.Demo.Data;
 using Metalama.Samples.Authorization.Demo.Sales;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Metalama.Samples.Authorization.Demo.Services;
@@ -23,11 +24,34 @@ public static class ServiceCollectionExtensions
                 .UseSqlite(
                     provider.GetRequiredService<InMemoryDatabase>().ConnectionString,
                     sqlite => sqlite.UseQuerySplittingBehavior( QuerySplittingBehavior.SplitQuery ) )
-                .AddInterceptors( SystemScopeMaterializationInterceptor.Instance ) );
+                .AddInterceptors(
+                    SystemScopeMaterializationInterceptor.Instance,
+                    provider.GetRequiredService<PermissionCacheInvalidationInterceptor>() ) );
 
-        // Security infrastructure. The policy loads its rules from the database, see DemoData.
+        // Security infrastructure. The policy loads its rules from the database, see DemoData. Its decisions are
+        // cached for all requests, behind the cache of each execution context, and invalidated after each change of
+        // the data that the policy reads.
+        services.AddMemoryCache();
         services.AddSingleton<DatabaseAuthorizationPolicy>();
-        services.AddSingleton<IAuthorizationPolicy>( provider => provider.GetRequiredService<DatabaseAuthorizationPolicy>() );
+
+        services.AddSingleton(
+            provider =>
+            {
+                var policy = provider.GetRequiredService<DatabaseAuthorizationPolicy>();
+
+                var cachingPolicy = new CachingAuthorizationPolicy(
+                    policy,
+                    provider.GetRequiredService<IMemoryCache>(),
+                    PermissionCacheKeys.GetKey,
+                    PermissionCacheKeys.GetSecurityParents );
+
+                policy.Reloaded += cachingPolicy.InvalidateAll;
+
+                return cachingPolicy;
+            } );
+
+        services.AddSingleton<IAuthorizationPolicy>( provider => provider.GetRequiredService<CachingAuthorizationPolicy>() );
+        services.AddSingleton<PermissionCacheInvalidationInterceptor>();
         services.AddSingleton<IAccessAuditor, LoggingAccessAuditor>();
         services.AddSingleton<RequestRunner>();
 

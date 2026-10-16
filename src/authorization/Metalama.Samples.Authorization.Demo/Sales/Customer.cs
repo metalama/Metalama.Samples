@@ -16,7 +16,9 @@ public sealed class Customer( Department department, string name ) : Entity
     // Used by Entity Framework, which creates entities in a system scope.
     private Customer() : this( null!, null! ) { }
 
-    // The department changes only through MoveTo, which checks the destination.
+    // The department changes only through MoveTo, which checks the destination. Moving a customer requires
+    // ChangeOwnership, so the setter requires it too.
+    [RequiresPermission( PermissionNames.Read, PermissionNames.ChangeOwnership )]
     public Department Department { get; private set; } = department;
 
     [AuthorizationOptions( DefaultWritePermission = PermissionNames.Write )]

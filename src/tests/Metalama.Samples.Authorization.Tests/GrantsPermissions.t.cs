@@ -120,6 +120,37 @@ public class WeightedReport : Report
     }
   }
 }
+// A constructor grants permissions on the new object. It needs no check, because no caller can access the object
+// before the constructor returns. The grant starts after the call to the other constructor.
+public class Draft : ISecurable
+{
+  public Draft() : this("")
+  {
+  }
+  [GrantsPermissions("Write")]
+  public Draft(string body)
+  {
+    using (SecurityContext.Grant(this, new string[] { "Write" }))
+    {
+      this.Body = body;
+    }
+  }
+  private string? _body;
+  [RequiresPermission("Read", "Write")]
+  public string? Body
+  {
+    get
+    {
+      AccessGuard.Demand(this, "Read", "Draft.Body", AccessKind.Read);
+      return _body;
+    }
+    set
+    {
+      AccessGuard.Demand(this, "Write", "Draft.Body", AccessKind.Write);
+      _body = value;
+    }
+  }
+}
 // The check can also come from the default securing of SecurableType.
 public class Summary : ISecurable
 {

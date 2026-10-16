@@ -22,6 +22,11 @@ public sealed class DatabaseAuthorizationPolicy : IAuthorizationPolicy
 
     private volatile RoleBasedAuthorizationPolicy? _policy;
 
+    /// <summary>
+    /// Occurs after the rules have been reloaded, for instance to invalidate a cache of decisions.
+    /// </summary>
+    public event Action? Reloaded;
+
     public bool IsGranted( ISubject subject, Permission permission, ISecurable securable )
         => this._policy?.IsGranted( subject, permission, securable ) ?? false;
 
@@ -40,6 +45,7 @@ public sealed class DatabaseAuthorizationPolicy : IAuthorizationPolicy
         }
 
         this._policy = builder.Build();
+        this.Reloaded?.Invoke();
     }
 
     // A rule on an unknown class is a configuration error. Ignoring it could silently remove a Deny rule.

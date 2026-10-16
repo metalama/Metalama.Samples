@@ -46,7 +46,8 @@ public sealed class AuthorizationOptions :
 
     /// <summary>
     /// Gets a value indicating whether <see cref="SecurableTypeAttribute"/> also secures
-    /// <c>internal</c> and <c>protected</c> members. Private members are never secured by default.
+    /// <c>internal</c> and <c>protected</c> methods. Private methods are never secured by default. Fields and
+    /// properties are always secured, whatever their accessibility, because they hold the state of the object.
     /// The default is <c>false</c>.
     /// </summary>
     public bool? SecureNonPublicMembers { get; init; }
