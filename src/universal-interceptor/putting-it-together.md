@@ -96,7 +96,7 @@ The tuple contains a copy of the receiver. When the receiver is a struct, the in
 and the changes would be lost. For instance, `RequestQuota` is a mutable struct, and its `TryConsume` method decrements
 the number of remaining requests:
 
-[!metalama-file weather-client/RequestQuota.cs]
+[!code-csharp[](weather-client/RequestQuota.cs)]
 
 The `CountAvailableRequests` method of `WeatherReport` calls `TryConsume` in a loop. If the call were intercepted,
 `quota` would never change, and the loop would never end:
