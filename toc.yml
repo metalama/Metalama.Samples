@@ -61,6 +61,11 @@ items:
           topicUid: sample-cache-4
     - name: NotifyPropertyChanged
       topicUid: sample-notifypropertychanged
+      items:
+        - name: "Dependencies within the type"
+          topicUid: sample-notifypropertychanged-sdk
+        - name: "Dependencies on base class properties"
+          topicUid: sample-notifypropertychanged-sdk-2
     - name: Change Tracking
       topicUid: sample-dirty
       items:
