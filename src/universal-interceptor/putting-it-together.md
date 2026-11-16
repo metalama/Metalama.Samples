@@ -49,10 +49,11 @@ Available requests: 2
 
 ## The RedirectToUniversalInterceptor method
 
-`RedirectToUniversalInterceptor` is an extension method of `IMethodResultFactory`. This interface is the base
-interface of the method selection and of the call site in `ForEachSite`, so the method is available in both places,
-like `RedirectToSynthesizedMethod` and `RedirectToExistingMethod`. On the method selection, the method calls
-`ForEachSite` itself, because the template and its arguments depend on the intercepted method of each call site:
+`RedirectToUniversalInterceptor` has two overloads: an extension method of `IMethodSelection`, for the method
+selection, and an extension method of `IMethodInterceptionSite`, for the call site in `ForEachSite`. The method is
+therefore available in both places, like `RedirectToSynthesizedMethod` and `RedirectToExistingMethod`. On the method
+selection, the method calls `ForEachSite` itself, because the template and its arguments depend on the intercepted
+method of each call site:
 
 [!metalama-file weather-app/UniversalInterceptorExtensions.cs member="UniversalInterceptorExtensions.RedirectToUniversalInterceptor"]
 
@@ -74,7 +75,7 @@ The errors are defined in the `DiagnosticDefinitions` class:
 
 [!metalama-file weather-app/DiagnosticDefinitions.cs]
 
-`IMethodResultFactory` gives no access to a diagnostic sink, so the errors are reported at each call site, through
+`IMethodSelection` gives no access to a diagnostic sink, so the errors are reported at each call site, through
 `site.Diagnostics`. A registration with an invalid member and no call site reports no error.
 
 The following test registers four invalid members:
