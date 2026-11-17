@@ -10,22 +10,20 @@ public static class UniversalInterceptorExtensions
     // Redirects the selected calls to the IUniversalInterceptor instance that a static field or property gives.
     // The interceptorType type must implement IUniversalInterceptor. The memberName member is a static field or
     // property of this type, of type IUniversalInterceptor or AsyncLocal<IUniversalInterceptor>.
+    // This overload applies to the method selection. The template and its arguments depend on the intercepted method,
+    // so the interception is decided for each call site.
     public static IMethodInterception RedirectToUniversalInterceptor(
-        this IMethodResultFactory factory,
+        this IMethodSelection selection,
         Type interceptorType,
         string memberName )
-        => factory switch
-        {
-            // On a call site, in the delegate given to ForEachSite.
-            IMethodInterceptionSite site => RedirectSite( site, interceptorType, memberName ),
+        => selection.ForEachSite( site => RedirectSite( site, interceptorType, memberName ) );
 
-            // On the method selection. The template and its arguments depend on the intercepted method, so the
-            // interception is decided for each call site.
-            IMethodSelection selection => selection.ForEachSite(
-                site => RedirectSite( site, interceptorType, memberName ) ),
-
-            _ => throw new ArgumentOutOfRangeException( nameof(factory) )
-        };
+    // This overload applies to a call site, in the delegate given to ForEachSite.
+    public static IMethodInterception RedirectToUniversalInterceptor(
+        this IMethodInterceptionSite site,
+        Type interceptorType,
+        string memberName )
+        => RedirectSite( site, interceptorType, memberName );
 
     private static IMethodInterception RedirectSite(
         IMethodInterceptionSite site,
@@ -152,9 +150,8 @@ public static class UniversalInterceptorExtensions
     {
         var argsType = CreateArgsType( site );
 
-        // LAMA0872 is reported because the analyzer cannot verify that a TemplateProvider or an anonymous type is
-        // durable. This result is created in the delegate of ForEachSite, for one call site of the current compilation.
-#pragma warning disable LAMA0872
+        // This interception is created in the delegate of ForEachSite, for one call site of the current compilation.
+        // It is not kept after this compilation, so its arguments can be code model values such as IType.
         var interception = site
             .RedirectToSynthesizedMethod( template )
             .WithTemplateProvider( TemplateProvider.FromType<UniversalInterceptorTemplates>() );
@@ -163,7 +160,6 @@ public static class UniversalInterceptorExtensions
             ? interception.WithArgs( new { TArgs = argsType, interceptorType, memberName, isAsyncLocal } )
             : interception.WithArgs(
                 new { TArgs = argsType, TResult = resultType, interceptorType, memberName, isAsyncLocal } );
-#pragma warning restore LAMA0872
     }
 
     // Checks that interceptorType implements IUniversalInterceptor and has a static member named memberName, of type

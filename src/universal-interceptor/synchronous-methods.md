@@ -79,7 +79,7 @@ The following project fabric redirects every call to the methods of `WeatherClie
 
 [!metalama-file weather-app/InterceptionFabric.cs]
 
-`RedirectToUniversalInterceptor` is a compile-time extension method of `IMethodResultFactory`. It is defined in this
+`RedirectToUniversalInterceptor` is a compile-time extension method of `IMethodInterceptionSite`. It is defined in this
 project. Its first argument is a type that implements `IUniversalInterceptor`, and the second argument is the name of
 a static field or property of this type, which gives the instance. The `ForEachSite` call, the `RequestQuota` type and
 the type of `CallLog.Current` are explained in <xref:sample-universal-interceptor-4>.
