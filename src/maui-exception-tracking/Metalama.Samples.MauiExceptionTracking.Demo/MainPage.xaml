@@ -6,6 +6,7 @@
              xmlns:converters="clr-namespace:Metalama.Samples.MauiExceptionTracking.Demo.Converters"
              xmlns:viewmodels="clr-namespace:Metalama.Samples.MauiExceptionTracking.Demo.ViewModels"
              x:Class="Metalama.Samples.MauiExceptionTracking.Demo.MainPage"
+             x:DataType="viewmodels:DemoViewModel"
              Title="Exception Tracking Demo">
 
     <ContentPage.Resources>
@@ -118,7 +119,7 @@
                                     HeightRequest="300"
                                     EmptyView="No exceptions recorded yet.">
                         <CollectionView.ItemTemplate>
-                            <DataTemplate>
+                            <DataTemplate x:DataType="local:ExceptionReport">
                                 <Frame BorderColor="LightCoral"
                                        BackgroundColor="#FFF0F0"
                                        Margin="0,5"
@@ -130,7 +131,7 @@
                                         <Label FontSize="12" TextColor="Gray">
                                             <Label.Text>
                                                 <MultiBinding StringFormat="{}{0} - {1}">
-                                                    <Binding Path="Exception.GetType().Name" />
+                                                    <Binding Path="ExceptionTypeName" />
                                                     <Binding Path="Timestamp" StringFormat="{}{0:HH:mm:ss}" />
                                                 </MultiBinding>
                                             </Label.Text>

@@ -117,7 +117,7 @@ public class TrackExceptionsAttribute : TypeAspect
             // Override methods that might be invoked by the MAUI framework.
             else if (method.Accessibility == Accessibility.Protected
                 && method.IsOverride
-                && method.OverriddenMethod!.DeclaringType.ContainingNamespace.FullName.StartsWith("Microsoft") )
+                && method.OverriddenMethod!.DeclaringType.ContainingNamespace.FullName.StartsWith("Microsoft", StringComparison.Ordinal) )
             {
                 // Report warning if method is not sealed - exception handling may be duplicated in derived types,
                 // or may incorrectly believe the call to base.Method() was successful when it actually threw and then swallowed.

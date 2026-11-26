@@ -54,7 +54,7 @@ public partial class SafeCommandExtension : IMarkupExtension<BindingBase>
         {
             Path = this.Path,
             Source = this.Source,
-            Converter = new CommandWrapperConverter(targetElement)
+            Converter = new CommandWrapperConverter(targetElement!)
         };
     }
 

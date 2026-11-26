@@ -1,17 +1,17 @@
 using Metalama.Extensions.Interceptors;
 using Metalama.Framework.Code;
 using Metalama.Framework.Fabrics;
+using System.Collections.Immutable;
 
 internal class Fabric : ProjectFabric
 {
     // [<snippet Modules>]
     // The migration stage of each module. The calls in the modules that are not listed
     // still go to the legacy calculator.
-    private static readonly Dictionary<string, MigrationStage> _modules = new()
-    {
-        ["Billing"] = MigrationStage.Migrated,
-        ["Shipping"] = MigrationStage.Comparing
-    };
+    private static readonly ImmutableDictionary<string, MigrationStage> _modules =
+        ImmutableDictionary<string, MigrationStage>.Empty
+            .Add( "Billing", MigrationStage.Migrated )
+            .Add( "Shipping", MigrationStage.Comparing );
     // [<endsnippet Modules>]
 
     // [<snippet Registration>]

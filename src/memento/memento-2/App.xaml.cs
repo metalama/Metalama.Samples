@@ -27,6 +27,8 @@ public partial class App
             .Build();
     }
 
+    // WPF only offers void overrides for the application lifecycle events.
+#pragma warning disable VSTHRD100
     protected override async void OnStartup( StartupEventArgs e )
     {
         await _host!.StartAsync();
@@ -42,4 +44,5 @@ public partial class App
         await _host!.StopAsync();
         base.OnExit( e );
     }
+#pragma warning restore VSTHRD100
 }

@@ -1,10 +1,11 @@
 ﻿using Metalama.Framework.Aspects;
 using Metalama.Framework.Code;
+using System.Collections.Immutable;
 
 [CompileTime]
 internal static class SensitiveParameterFilter
 {
-    private static readonly string[] _sensitiveNames = ["password", "credential", "pwd"];
+    private static readonly ImmutableArray<string> _sensitiveNames = ["password", "credential", "pwd"];
 
     public static bool IsSensitive( IParameter parameter )
     {

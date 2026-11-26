@@ -41,19 +41,19 @@ public sealed class LoggingInterceptor : IInterceptor
         Func<TArgs, Task<TResult>> proceed )
         where TArgs : struct, ITuple
     {
-        this._writer.WriteLine( $"{Format( metadata, args )} started." );
+        await this._writer.WriteLineAsync( $"{Format( metadata, args )} started." );
 
         try
         {
             var result = await proceed( args );
 
-            this._writer.WriteLine( $"{Format( metadata, args )} returned {FormatResult( result )}." );
+            await this._writer.WriteLineAsync( $"{Format( metadata, args )} returned {FormatResult( result )}." );
 
             return result;
         }
         catch ( Exception e )
         {
-            this._writer.WriteLine( $"{Format( metadata, args )} failed: {e.GetType().Name}." );
+            await this._writer.WriteLineAsync( $"{Format( metadata, args )} failed: {e.GetType().Name}." );
 
             throw;
         }
@@ -65,19 +65,19 @@ public sealed class LoggingInterceptor : IInterceptor
         Func<TArgs, ValueTask<TResult>> proceed )
         where TArgs : struct, ITuple
     {
-        this._writer.WriteLine( $"{Format( metadata, args )} started." );
+        await this._writer.WriteLineAsync( $"{Format( metadata, args )} started." );
 
         try
         {
             var result = await proceed( args );
 
-            this._writer.WriteLine( $"{Format( metadata, args )} returned {FormatResult( result )}." );
+            await this._writer.WriteLineAsync( $"{Format( metadata, args )} returned {FormatResult( result )}." );
 
             return result;
         }
         catch ( Exception e )
         {
-            this._writer.WriteLine( $"{Format( metadata, args )} failed: {e.GetType().Name}." );
+            await this._writer.WriteLineAsync( $"{Format( metadata, args )} failed: {e.GetType().Name}." );
 
             throw;
         }
