@@ -86,7 +86,7 @@ internal class ImplementMetricsAspect : TypeAspect
             args: new { metrics, meterFactoryField, meterHostField } );
 
         builder.With( builder.Target.Compilation )
-            .AddAnnotation( new MetricTypeAnnotation( metricsType.Declaration.ToRef() ) );
+            .AddAnnotation( new MetricTypeAnnotation( metricsType.Declaration.ToDurableRef() ) );
     }
 
     [Template]

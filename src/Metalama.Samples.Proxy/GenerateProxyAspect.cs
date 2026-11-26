@@ -9,20 +9,21 @@ namespace Metalama.Samples.Proxy;
 [AttributeUsage( AttributeTargets.Assembly, AllowMultiple = true )]
 public sealed class GenerateProxyAspect : CompilationAspect
 {
-    private readonly object _interfaceType;
+    private readonly Type? _interfaceClrType;
+    private readonly IDurableRef<INamedType>? _interfaceTypeRef;
     private readonly string _ns;
     private readonly string _typeName;
 
     public GenerateProxyAspect( Type interfaceType, string typeName, string? ns = null )
     {
-        this._interfaceType = interfaceType;
+        this._interfaceClrType = interfaceType;
         this._ns = ns ?? interfaceType.Namespace ?? "";
         this._typeName = typeName;
     }
 
     public GenerateProxyAspect( INamedType interfaceType, string typeName, string? ns = null )
     {
-        this._interfaceType = interfaceType;
+        this._interfaceTypeRef = interfaceType.ToDurableRef();
         this._ns = ns ?? interfaceType.ContainingNamespace.FullName;
         this._typeName = typeName;
     }
@@ -31,8 +32,8 @@ public sealed class GenerateProxyAspect : CompilationAspect
     {
         base.BuildAspect( builder );
 
-        var interfaceType = this._interfaceType as INamedType ??
-                            TypeFactory.GetNamedType( (Type) this._interfaceType );
+        var interfaceType = this._interfaceTypeRef?.GetTarget() ??
+                            TypeFactory.GetNamedType( this._interfaceClrType! );
 
         // Add a type.
         var type = builder.WithNamespace( this._ns )
@@ -90,25 +91,25 @@ public sealed class GenerateProxyAspect : CompilationAspect
                 switch ( returnType.Definition.SpecialType )
                 {
                     case SpecialType.Task:
-                        templateName = nameof(this.TaskMethodTemplate);
+                        templateName = nameof(this.TaskMethodTemplateAsync);
                         resultType = TypeFactory.GetType( SpecialType.Void );
 
                         break;
 
                     case SpecialType.Task_T:
-                        templateName = nameof(this.TaskOfTMethodTemplate);
+                        templateName = nameof(this.TaskOfTMethodTemplateAsync);
                         resultType = returnType.TypeArguments[0];
 
                         break;
 
                     case SpecialType.ValueTask:
-                        templateName = nameof(this.ValueTaskMethodTemplate);
+                        templateName = nameof(this.ValueTaskMethodTemplateAsync);
                         resultType = TypeFactory.GetType( SpecialType.Void );
 
                         break;
 
                     case SpecialType.ValueTask_T:
-                        templateName = nameof(this.ValueTaskOfTMethodTemplate);
+                        templateName = nameof(this.ValueTaskOfTMethodTemplateAsync);
                         resultType = returnType.TypeArguments[0];
 
                         break;
@@ -300,7 +301,7 @@ public sealed class GenerateProxyAspect : CompilationAspect
     }
 
     [Template]
-    private async Task TaskMethodTemplate<[CompileTime] TArgs>(
+    private async Task TaskMethodTemplateAsync<[CompileTime] TArgs>(
         IMethod method,
         IField interceptedField,
         IField interceptorField,
@@ -361,7 +362,7 @@ public sealed class GenerateProxyAspect : CompilationAspect
     }
 
     [Template]
-    private async Task<TResult> TaskOfTMethodTemplate<[CompileTime] TArgs, [CompileTime] TResult>(
+    private async Task<TResult> TaskOfTMethodTemplateAsync<[CompileTime] TArgs, [CompileTime] TResult>(
         IMethod method,
         IField interceptedField,
         IField interceptorField,
@@ -418,7 +419,7 @@ public sealed class GenerateProxyAspect : CompilationAspect
     }
 
     [Template]
-    private async ValueTask ValueTaskMethodTemplate<[CompileTime] TArgs>(
+    private async ValueTask ValueTaskMethodTemplateAsync<[CompileTime] TArgs>(
         IMethod method,
         IField interceptedField,
         IField interceptorField,
@@ -479,7 +480,7 @@ public sealed class GenerateProxyAspect : CompilationAspect
     }
 
     [Template]
-    private async ValueTask<TResult> ValueTaskOfTMethodTemplate<[CompileTime] TArgs,
+    private async ValueTask<TResult> ValueTaskOfTMethodTemplateAsync<[CompileTime] TArgs,
                                                                 [CompileTime] TResult>(
         IMethod method,
         IField interceptedField,

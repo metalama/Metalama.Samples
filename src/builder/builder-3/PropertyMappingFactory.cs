@@ -8,7 +8,7 @@ namespace Metalama.Samples.Builder3;
 [CompileTime]
 internal class PropertyMappingFactory
 {
-    private static readonly HashSet<string> _immutableCollectionTypes =
+    private static readonly ImmutableHashSet<string> _immutableCollectionTypes =
     [
         nameof(ImmutableArray),
         nameof(ImmutableList),

@@ -4,9 +4,9 @@ namespace Metalama.Samples.Metrics;
 
 internal class MetricTypeAnnotation : IAnnotation<ICompilation>
 {
-    public IRef<INamedType> MetricType { get; }
+    public IDurableRef<INamedType> MetricType { get; }
 
-    public MetricTypeAnnotation( IRef<INamedType> metricType )
+    public MetricTypeAnnotation( IDurableRef<INamedType> metricType )
     {
         this.MetricType = metricType;
     }

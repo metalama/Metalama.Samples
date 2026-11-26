@@ -5,13 +5,13 @@ public class RetryAttribute : OverrideMethodAspect
     /// <summary>
     /// Gets or sets the maximum number of times that the method should be executed.
     /// </summary>
-    public int Attempts { get; set; } = 3;
+    public int Attempts { get; init; } = 3;
 
     /// <summary>
     /// Gets or set the delay, in ms, to wait between the first and the second attempt.
     /// The delay is doubled at every further attempt.
     /// </summary>
-    public double Delay { get; set; } = 100;
+    public double Delay { get; init; } = 100;
 
     // Template for non-async methods.
     public override dynamic? OverrideMethod()

@@ -30,6 +30,11 @@ public sealed class ExceptionReport
     public Exception Exception { get; }
 
     /// <summary>
+    /// Gets the type name of the exception (e.g., "InvalidOperationException").
+    /// </summary>
+    public string ExceptionTypeName => this.Exception.GetType().Name;
+
+    /// <summary>
     /// Gets the type name of the source visual element (e.g., "Button", "Label").
     /// May be null if no source element was provided.
     /// </summary>

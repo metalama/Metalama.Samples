@@ -24,6 +24,7 @@ public sealed partial class VisualContextTracker
 
         private ContextScope()
         {
+            this._asyncLocal = null!;
             this._disposed = true;
         }
 
